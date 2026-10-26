@@ -202,3 +202,6 @@
 :root[data-theme='dark'] .pf-skill { color: #9db8ff; background: rgba(90, 153, 244, 0.14); }
 @media (prefers-color-scheme: dark) { :root:not([data-theme='light']) .pf-skill { color: #9db8ff; background: rgba(90, 153, 244, 0.14); } }
 @media (max-width: 560px) { .pf-tabs button { flex: 1; padding: 10px 4px; font-size: 14px; } }
+
+/* "All Posts" / "Feed" on a profile scroll like the home feed */
+.pf-feed { display: flex; flex-direction: column; gap: 14px; }

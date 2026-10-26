@@ -1,6 +1,6 @@
 import React from 'react';
 import { Link, useLocation } from '../lib/router';
-import { Icon } from './kit';
+import { Avatar, Icon } from './kit';
 import { StoreButtons } from './AppBanner';
 import { APP_LINKS, ENV_NAME } from '../lib/env';
 import { useAuth } from '../lib/auth';
@@ -81,7 +81,7 @@ export function Shell({ children, wide }: { children: React.ReactNode; wide?: bo
         {TABS.map((t) => (
           <Link key={t.to} to={t.to} className={t.match(pathname) ? 'active' : ''}>
             <span className="tab-pill">
-              <Icon name={t.icon} />
+              {t.icon === 'user' && user?.imageUrl ? <span className="tab-avatar"><Avatar src={user.imageUrl} name={user.name} size={24} /></span> : <Icon name={t.icon} />}
             </span>
             <span className="tab-label">{t.label}</span>
           </Link>

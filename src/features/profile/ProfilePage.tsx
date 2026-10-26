@@ -30,6 +30,7 @@ import {
   type Profile,
   type ReviewRow,
 } from './api';
+import { PostCard } from '../home/PostCard';
 import { ConfirmModal, ShareModal, Stars, VerifiedBadge } from './components';
 import { RecommendationModal, RecommendationsTab } from './Recommendations';
 import { bump } from './bus';
@@ -361,7 +362,7 @@ function ProfileView({ userId, isOwn }: { userId: string; isOwn: boolean }) {
         ))}
       </div>
 
-      {tab === 'posts' && <PostsTab userId={userId} isOwn={isOwn} />}
+      {tab === 'posts' && <PostsTab userId={userId} isOwn={isOwn} author={{ userId, fullName: name, imageDetails: p.avatar ? { src: p.avatar } : undefined, hasVerifiedBadge: !!p.hasVerifiedBadge }} />}
       {tab === 'about' && <AboutTab p={p} isOwn={isOwn} skills={skills} />}
       {tab === 'recommendations' && (
         <RecommendationsTab isOwn={isOwn} userId={userId} name={name} hasGiven={hasGivenQ.data?.hasGiven} onRecommend={() => setRecOpen(true)} />
@@ -442,7 +443,7 @@ function ProfileSkeleton() {
 
 type PostFilter = 'all' | 'media' | 'texts';
 
-function PostsTab({ userId, isOwn }: { userId: string; isOwn: boolean }) {
+function PostsTab({ userId, isOwn, author }: { userId: string; isOwn: boolean; author: Record<string, unknown> }) {
   const [filter, setFilter] = useState<PostFilter>('all');
   const list = useInfinite<Post>(`posts:${isOwn ? 'self' : 'other'}:${userId}`, (page) => fetchPostsPage(userId, isOwn, page));
   const sentinel = useOnVisible(() => list.loadMore());
@@ -500,12 +501,21 @@ function PostsTab({ userId, isOwn }: { userId: string; isOwn: boolean }) {
           {filter === 'all' ? (isOwn ? 'Your posts will appear here.' : 'Nothing posted yet.') : filter === 'media' ? 'No photos to show.' : 'No texts to show.'}
         </Empty>
       ) : (
+        filter !== 'media' ? (
+        <div className="pf-feed">
+          {shown.map((p) => (
+            <PostCard key={p.statusPostId} post={(p as any).userDetails?.length ? (p as any) : ({ ...p, userDetails: [author] } as any)} />
+          ))}
+          {list.loading && <div className="pf-tile pf-skel" style={{ aspectRatio: 'auto', height: 160 }} />}
+        </div>
+        ) : (
         <div className="pf-grid">
           {shown.map((p) => (
             <PostTile key={p.statusPostId} post={p} />
           ))}
           {list.loading && Array.from({ length: shown.length ? 3 : 6 }).map((_, i) => <div key={'s' + i} className="pf-tile pf-skel" />)}
         </div>
+        )
       )}
       <div ref={sentinel} style={{ height: 1 }} />
     </div>

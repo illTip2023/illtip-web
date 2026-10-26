@@ -189,3 +189,7 @@ h2 { font-size: 17px; }
   .tabbar a.active { color: #fff; font-weight: 600; }
   .content { padding-bottom: 110px; }
 }
+
+/* Profile tab shows the signed-in user's photo */
+.tab-avatar { display: inline-flex; border-radius: 50%; overflow: hidden; box-shadow: 0 0 0 2px currentColor; }
+.tab-avatar img, .tab-avatar > * { width: 24px; height: 24px; }
