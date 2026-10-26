@@ -115,7 +115,7 @@ export function RoleFinishPage() {
   const role: Role = qp.get('role') === 'customer' ? 'customer' : 'freelancer';
   const session = useRequireSession('/role/finish?role=' + role);
   const { updateUser } = useAuth();
-  const services = useQuery('masterdata:services', fetchMasterServices, { staleMs: 24 * 3600_000 });
+  const services = useQuery('auth:masterdata:services', fetchMasterServices, { staleMs: 24 * 3600_000 });
   const serviceItems = useMemo(() => servicesToItems(services.data), [services.data]);
   const [serviceId, setServiceId] = useState<number | null>(null);
   const [skillIds, setSkillIds] = useState<number[]>([]);

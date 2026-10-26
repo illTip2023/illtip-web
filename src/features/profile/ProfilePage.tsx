@@ -55,12 +55,12 @@ export function UserProfilePage() {
 }
 
 function useSkillNames(p?: Profile | null) {
-  const cat = useQuery(p && p.skillDetails.length ? 'masterdata:services' : null, fetchServiceCatalog, { staleMs: 30 * 60_000 });
+  const cat = useQuery(p && (p.skillDetails || []).length ? 'profile:masterdata:services' : null, fetchServiceCatalog, { staleMs: 30 * 60_000 });
   return useMemo(() => {
     if (!p || !cat.data) return [] as string[];
     const svc = cat.data.find((s) => s.serviceId === p.serviceDetails?.serviceId);
-    const pool = svc ? svc.skillArr : cat.data.flatMap((s) => s.skillArr);
-    const ids = new Set(p.skillDetails);
+    const pool = svc ? svc.skillArr || [] : cat.data.flatMap((s) => s.skillArr || []);
+    const ids = new Set(p.skillDetails || []);
     const names = pool.filter((s) => ids.has(s.skillId)).map((s) => s.skill);
     return [...new Set(names)];
   }, [p, cat.data]);

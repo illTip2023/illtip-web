@@ -142,7 +142,7 @@ export async function fetchMasterServices(): Promise<MasterService[]> {
 }
 
 export function useMasterServices() {
-  return useQuery('masterdata:services', fetchMasterServices, { staleMs: 6 * 60 * 60 * 1000 });
+  return useQuery('jobs:masterdata:services', fetchMasterServices, { staleMs: 6 * 60 * 60 * 1000 });
 }
 
 function fallbackImage(services: MasterService[] | undefined, serviceId: number | null, skillId: number | null, serviceName: string, skillName: string): string | undefined {

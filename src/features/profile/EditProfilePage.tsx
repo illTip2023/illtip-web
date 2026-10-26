@@ -107,7 +107,7 @@ function PhotoCard({ name, current }: { name: string; current?: string }) {
 export function EditProfilePage() {
   const { user, updateUser } = useAuth();
   const prof = useQuery(user?.id ? `profile:${user.id}` : null, () => fetchProfile());
-  const cat = useQuery('masterdata:services', fetchServiceCatalog, { staleMs: 30 * 60_000 });
+  const cat = useQuery('profile:masterdata:services', fetchServiceCatalog, { staleMs: 30 * 60_000 });
   const p = prof.data;
 
   const [name, setName] = useState('');
@@ -247,7 +247,7 @@ export function EditProfilePage() {
               </select>
             )}
           </div>
-          {service && service.skillArr.length > 0 && (
+          {service && (service.skillArr || []).length > 0 && (
             <div className="field" style={{ marginBottom: 0 }}>
               <div className="row between" style={{ marginBottom: 6 }}>
                 <span className="label" style={{ margin: 0 }}>
