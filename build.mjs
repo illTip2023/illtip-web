@@ -16,7 +16,7 @@ fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
 for (const f of fs.readdirSync('public')) fs.copyFileSync(path.join('public', f), path.join(out, f));
 const stamp = Date.now().toString(36);
-fs.writeFileSync(path.join(out, 'index.html'), fs.readFileSync('index.html', 'utf8').replaceAll('__BUILD__', stamp).replaceAll('__BASE__', base));
+fs.writeFileSync(path.join(out, 'index.html'), fs.readFileSync('index.html', 'utf8').replaceAll('__BUILD__', stamp).replaceAll('__BASE__', base).replace(prod ? /\s*<meta name="robots" content="noindex" \/>/ : /$^/, ''));
 
 const opts = {
   entryPoints: { app: 'src/main.tsx' },

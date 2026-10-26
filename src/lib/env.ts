@@ -13,6 +13,8 @@ const ENVS: Record<EnvName, { apiBaseUrl: string; chatUrl: string }> = {
 export const DEFAULT_ENV: EnvName = ((globalThis as any).__ILLTIP_DEFAULT_ENV__ as EnvName) || 'DEV';
 
 function pickEnv(): EnvName {
+  // The live build always uses the live server (no ?env= switching on www.illtip.com).
+  if (DEFAULT_ENV === 'PROD') return 'PROD';
   try {
     const q = new URLSearchParams(location.search).get('env');
     if (q) {
