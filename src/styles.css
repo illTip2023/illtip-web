@@ -160,3 +160,5 @@ h2 { font-size: 17px; }
 .autovideo { position: relative; }
 .autovideo-sound { position: absolute; right: 10px; top: 10px; width: 36px; height: 36px; border-radius: 50%; border: none; background: rgba(0, 0, 0, 0.55); color: #fff; font-size: 16px; display: flex; align-items: center; justify-content: center; z-index: 2; }
 .autovideo-sound:hover { background: rgba(0, 0, 0, 0.75); }
+
+@media (max-width: 860px) { .env-pill { bottom: auto; top: 58px; right: 8px; } }

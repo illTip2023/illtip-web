@@ -239,6 +239,9 @@ function extractPay(item: Row): { min: string; max: string } {
 export function payRangeText(job: Pick<Job, 'currency' | 'payMin' | 'payMax'>): string {
   const sym = job.currency;
   const ok = (v: string) => v && v !== '0';
+  // Add thousands separators to plain numbers (50000 -> 50,000); leave already-formatted values alone.
+  const fmt = (v: string) => (/^\d{4,}(\.\d+)?$/.test(v) ? Number(v).toLocaleString('en-US') : v);
+  job = { ...job, payMin: ok(job.payMin) ? fmt(job.payMin) : job.payMin, payMax: ok(job.payMax) ? fmt(job.payMax) : job.payMax };
   if (ok(job.payMin) && ok(job.payMax) && job.payMin !== job.payMax) return `${sym}${job.payMin} - ${sym}${job.payMax}`;
   if (ok(job.payMin)) return `${sym}${job.payMin}`;
   if (ok(job.payMax)) return `${sym}${job.payMax}`;
