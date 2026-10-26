@@ -11,6 +11,7 @@ import { Empty, Toaster } from './ui/kit';
 import { applyTheme, getThemePref } from './features/settings/theme';
 import { oldSharedLinkRedirect } from './features/legacy/LegacyPages';
 import { BASE } from './lib/router';
+import SEO_PAGES from './seo-pages.json';
 
 function NotFound() {
   return (
@@ -34,7 +35,7 @@ function legacyRedirect(pathname: string, search: string): string | null {
   if (p === '/serviceRequest' && q.get('id')) return '/jobs/' + encodeURIComponent(q.get('id')!);
   if (p.startsWith('/serviceRequest/')) return '/jobs/' + p.split('/')[2];
   const map: Record<string, string> = {
-    '/splash': '/', '/home': '/', '/signup': '/register', '/signUp': '/register', '/loginWithPass': '/login', '/otp': '/verify-email',
+    '/splash': '/register', '/home': '/', '/signup': '/register', '/signUp': '/register', '/loginWithPass': '/login', '/otp': '/verify-email',
     '/recover': '/forgot-password', '/recovery-update': '/forgot-password', '/privacyPolicy': '/settings/privacy', '/faq': '/settings/faq',
     '/help': '/settings/help', '/contactus': '/settings/help', '/notification': '/notifications', '/chat': '/chat', '/profile': '/profile',
     '/updateProfile': '/profile/edit', '/myWallet': '/wallet', '/contractor-wallet': '/wallet', '/rewardHistory': '/referral/history',
@@ -62,6 +63,8 @@ function App() {
 
   useEffect(() => {
     window.scrollTo(0, 0);
+    const seo = (SEO_PAGES as { path: string; title: string }[]).find((x) => x.path === (pathname.replace(/\/+$/, '') || '/'));
+    document.title = seo ? seo.title : "i'llTip – Find work, hire pros, get tipped";
   }, [pathname]);
 
   const onboarding = session && needsAuth ? (session.user.emailVerified === false ? '/verify-email?email=' + encodeURIComponent(session.user.email) : session.user.roleSelected === false ? '/role' : null) : null;

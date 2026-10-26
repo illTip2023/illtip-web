@@ -200,3 +200,11 @@ h2 { font-size: 17px; }
 .ref-landing-card img { align-self: center; border-radius: 14px; }
 .ref-landing-card h1 { font-size: 22px; margin: 8px 0 0; }
 .ref-landing-code { font: 700 26px/1 ui-monospace, monospace; letter-spacing: 2px; padding: 14px; border: 2px dashed var(--blue, #3b4cca); border-radius: 12px; background: transparent; color: inherit; cursor: pointer; }
+
+/* Stop the page sliding sideways on phones (iOS lets you drag the whole page left/right).
+   html's overflow goes to the viewport; body/#root use clip so window scrolling keeps working. */
+html { overflow-x: hidden; overscroll-behavior-x: none; }
+body, #root { overflow-x: clip; max-width: 100%; }
+.hp-media:not(.hp-carousel-wrap), .hp-media:not(.hp-carousel-wrap) video { touch-action: pan-y pinch-zoom; }
+video.hp-clickable { cursor: pointer; }
+.info-jobs-link { position: fixed; z-index: 2; right: 12px; bottom: 12px; background: #2d3e5f; color: #fff; padding: 8px 14px; border-radius: 999px; font: 600 13px/1 Poppins, system-ui, sans-serif; box-shadow: 0 4px 14px rgba(0,0,0,.2); }

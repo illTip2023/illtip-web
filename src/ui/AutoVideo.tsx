@@ -20,7 +20,8 @@ if (typeof document !== 'undefined') {
   });
 }
 
-export function AutoVideo({ src, poster, className }: { src: string; poster?: string; className?: string }) {
+/** onTap: feed mode (no native controls; tapping the video opens the post, like the app). Without it the video shows controls. */
+export function AutoVideo({ src, poster, className, onTap }: { src: string; poster?: string; className?: string; onTap?: () => void }) {
   const ref = useRef<HTMLVideoElement | null>(null);
   const [muted, setMuted] = useState(!soundOn);
   const userPaused = useRef(false);
@@ -95,7 +96,7 @@ export function AutoVideo({ src, poster, className }: { src: string; poster?: st
 
   return (
     <div className="autovideo">
-      <video ref={ref} className={className} src={src} poster={poster} muted={muted} playsInline loop preload="metadata" controls controlsList="nodownload noplaybackrate" disablePictureInPicture />
+      <video ref={ref} className={className + (onTap ? ' hp-clickable' : '')} src={src} poster={poster} muted={muted} playsInline loop preload="metadata" controls={!onTap} controlsList="nodownload noplaybackrate" disablePictureInPicture onClick={onTap} />
       <button type="button" className="autovideo-sound" aria-label={muted ? 'Turn sound on' : 'Mute'} onClick={toggleSound}>
         {muted ? '🔇' : '🔊'}
       </button>

@@ -135,18 +135,18 @@ function Caption({ post, text, full, onOpen }: { post: Post; text: string; full?
 
 /* ---------------- media ---------------- */
 
-function MediaView({ m, onOpen, cover }: { m: Media; onOpen?: () => void; cover?: boolean }) {
+function MediaView({ m, onOpen, cover, onOpenPost }: { m: Media; onOpen?: () => void; cover?: boolean; onOpenPost?: () => void }) {
   const [bad, setBad] = useState(false);
   if (m.kind === 'video') {
     return (
-      <AutoVideo className="hp-video" src={m.url} poster={m.poster} />
+      <AutoVideo className="hp-video" src={m.url} poster={m.poster} onTap={onOpenPost} />
     );
   }
   if (bad) return <div className="hp-media-missing muted small">Image unavailable</div>;
   return <img className={'hp-img' + (cover ? ' cover' : '') + (onOpen ? ' hp-clickable' : '')} src={m.url} alt="" loading="lazy" decoding="async" onClick={onOpen} onError={() => setBad(true)} />;
 }
 
-export function PostMedia({ post, onOpenImage }: { post: Post; onOpenImage?: (index: number) => void }) {
+export function PostMedia({ post, onOpenImage, onOpenPost }: { post: Post; onOpenImage?: (index: number) => void; onOpenPost?: () => void }) {
   const media = useMemo(() => mediaOf(post), [post]);
   const track = useRef<HTMLDivElement>(null);
   const [idx, setIdx] = useState(0);
@@ -154,7 +154,7 @@ export function PostMedia({ post, onOpenImage }: { post: Post; onOpenImage?: (in
   if (media.length === 1) {
     return (
       <div className="hp-media">
-        <MediaView m={media[0]} onOpen={onOpenImage ? () => onOpenImage(0) : undefined} />
+        <MediaView m={media[0]} onOpen={onOpenImage ? () => onOpenImage(0) : undefined} onOpenPost={onOpenPost} />
       </div>
     );
   }
@@ -177,7 +177,7 @@ export function PostMedia({ post, onOpenImage }: { post: Post; onOpenImage?: (in
       >
         {media.map((m, i) => (
           <div className="hp-slide" key={m.key}>
-            <MediaView m={m} cover={false} onOpen={onOpenImage ? () => onOpenImage(i) : undefined} />
+            <MediaView m={m} cover={false} onOpen={onOpenImage ? () => onOpenImage(i) : undefined} onOpenPost={onOpenPost} />
           </div>
         ))}
       </div>
@@ -648,7 +648,7 @@ export function PostCard({ post, detail, onDeleted, onCommentClick }: { post: Po
         <PostMenu items={menu} />
       </header>
 
-      <PostMedia post={post} onOpenImage={detail ? (i) => setLightbox(i) : open ? () => open() : undefined} />
+      <PostMedia post={post} onOpenImage={detail ? (i) => setLightbox(i) : open ? () => open() : undefined} onOpenPost={open} />
       <Caption post={post} text={caption} full={detail} onOpen={open} />
       <PollCard post={post} />
 

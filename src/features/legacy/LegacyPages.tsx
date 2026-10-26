@@ -12,11 +12,14 @@ import { detectPlatform } from '../../ui/AppBanner';
 
 export function InformationPage() {
   return (
+    <>
+    <a href="https://jobs.illtip.com/" className="info-jobs-link">Browse jobs</a>
     <iframe
       title="i'llTip"
       src={href('/assets/landing-page-html/landing-page-html.html')}
       style={{ position: 'fixed', inset: 0, width: '100%', height: '100%', border: 0, background: '#fff' }}
     />
+    </>
   );
 }
 

@@ -1,3 +1,4 @@
+import { href } from '../../lib/router';
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { APP_LINKS } from '../../lib/env';
 import { goBack } from '../../lib/router';
@@ -47,7 +48,7 @@ export function AuthLayout({
         {sub && <p className="center muted au-sub">{sub}</p>}
         <div style={{ marginTop: 18 }}>{children}</div>
         <p className="center muted tiny" style={{ marginTop: 18 }}>
-          Get the app:{' '}
+          <a href="https://jobs.illtip.com/">Jobs</a> · <a href={href('/information')}>About i'llTip</a> · Get the app:{' '}
           <a href={APP_LINKS.ios} target="_blank" rel="noreferrer">
             iPhone
           </a>{' '}

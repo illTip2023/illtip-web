@@ -12,5 +12,8 @@ cp -r "$OLD/src/assets" live/assets
 cp -r "$OLD/src/.well-known" live/.well-known
 cp "$OLD/src/favicon.ico" live/favicon.ico
 cp -r dist/* live/
-# The app is a single-page app: the web server must send index.html for unknown paths (nginx: try_files $uri $uri/ /index.html).
+# Public pages pre-rendered for Google (title, description, text without JS) + sitemap.xml + robots.txt.
+NODE_PATH="${NODE_PATH:-/opt/npm-tools/node_modules}" node scripts/prerender.mjs live
+# The app is a single-page app: the web server must try the pre-rendered page, then fall back to index.html
+# (nginx: try_files $uri $uri/index.html /index.html).
 echo "live/ ready: $(du -sh live | cut -f1)"

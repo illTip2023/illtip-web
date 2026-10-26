@@ -166,6 +166,9 @@ export function JobListPage() {
         <div>
           <h1>Jobs</h1>
           <p className="muted">Find work near you or remote, apply in a few clicks.</p>
+          <p className="small" style={{ marginTop: 4 }}>
+            <a href="https://jobs.illtip.com/">Browse all open jobs on jobs.illtip.com →</a>
+          </p>
         </div>
         <Link to="/hire/request" className="btn jb-hero-btn">
           <Icon16 name="plus" /> Post a job

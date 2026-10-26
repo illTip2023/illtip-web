@@ -1,0 +1,13 @@
+[
+  { "path": "/", "title": "i'llTip – Find work, hire pros, get tipped", "description": "i'llTip is a global talent and recruiting marketplace: find remote and local jobs, hire trusted pros, share your work and get tipped." },
+  { "path": "/information", "title": "About i'llTip – Find jobs. Hire talent. Grow faster.", "description": "A global talent and recruiting marketplace connecting people to real income opportunities." },
+  { "path": "/login", "title": "Log in – i'llTip", "description": "Log in to i'llTip to apply for jobs, chat with employers and pros, and manage your profile." },
+  { "path": "/register", "title": "Create your free account – i'llTip", "description": "Join i'llTip for free: get matched to new jobs, hire skilled pros, and get tipped for your work." },
+  { "path": "/forgot-password", "title": "Reset your password – i'llTip", "description": "Forgot your i'llTip password? Reset it with a code sent to your email." },
+  { "path": "/settings/about", "title": "About – i'llTip", "description": "What i'llTip is, who it's for, and how it helps people find work and hire talent." },
+  { "path": "/settings/faq", "title": "FAQ – i'llTip", "description": "Answers to common questions about jobs, hiring, plans, tips and referrals on i'llTip." },
+  { "path": "/settings/help", "title": "Help & Contact – i'llTip", "description": "Get help with your i'llTip account, jobs, payments and the app." },
+  { "path": "/settings/terms", "title": "Terms & Conditions – i'llTip", "description": "The terms and conditions for using i'llTip." },
+  { "path": "/settings/privacy", "title": "Privacy Policy – i'llTip", "description": "How i'llTip collects, uses and protects your information." },
+  { "path": "/settings/eula", "title": "End User License Agreement – i'llTip", "description": "The end user license agreement for the i'llTip apps." }
+]

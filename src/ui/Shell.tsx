@@ -56,6 +56,9 @@ export function Shell({ children, wide }: { children: React.ReactNode; wide?: bo
           <Link to="/settings" className={pathname.startsWith('/settings') ? 'active' : ''}>
             <Icon name="settings" /> Settings
           </Link>
+          <a href="https://jobs.illtip.com/" title="All open jobs on jobs.illtip.com">
+            <Icon name="jobs" /> Job board ↗
+          </a>
         </nav>
         <div className="spacer" />
         <div className="get-app">
