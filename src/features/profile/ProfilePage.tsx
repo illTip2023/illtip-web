@@ -329,7 +329,7 @@ function ProfileView({ userId, isOwn }: { userId: string; isOwn: boolean }) {
 
       {isOwn && rating && (
         <Link to="/profile/rating" className="pf-vis-card">
-          <div className="pf-vis-score">{rating.isNew ? 'New' : rating.stars.toFixed(1)}</div>
+          <div className="pf-vis-score">{rating.isNew ? 'New' : Number(rating.stars || 0).toFixed(1)}</div>
           <div className="grow">
             <div className="row" style={{ gap: 8 }}>
               {!rating.isNew && <Stars value={rating.stars} size={15} dim="rgba(255,255,255,0.25)" />}
@@ -342,7 +342,7 @@ function ProfileView({ userId, isOwn }: { userId: string; isOwn: boolean }) {
                 <span className={rating.change7d > 0 ? 'pf-up' : 'pf-down'}>
                   {' '}
                   · {rating.change7d > 0 ? '▲ +' : '▼ '}
-                  {Math.abs(rating.change7d).toFixed(1)} this week
+                  {Math.abs(Number(rating.change7d) || 0).toFixed(1)} this week
                 </span>
               )}
             </div>

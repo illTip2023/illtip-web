@@ -17,7 +17,7 @@ export function VerifiedBadge({ tier, size = 16 }: { tier?: number; size?: numbe
 export function Stars({ value, size = 16, dim = 'var(--line)' }: { value: number; size?: number; dim?: string }) {
   const r = Math.round(value * 2) / 2;
   return (
-    <span className="pf-stars" aria-label={`${value.toFixed(1)} out of 5 stars`}>
+    <span className="pf-stars" aria-label={`${Number(value || 0).toFixed(1)} out of 5 stars`}>
       {[1, 2, 3, 4, 5].map((i) => {
         const fill = r >= i ? 1 : r >= i - 0.5 ? 0.5 : 0;
         const id = `half-${i}-${size}`;

@@ -105,7 +105,7 @@ export function RatingPage() {
               </>
             ) : (
               <>
-                <div className="pf-rating-big">{d.stars.toFixed(1)}</div>
+                <div className="pf-rating-big">{Number(d.stars || 0).toFixed(1)}</div>
                 <Stars value={d.stars} size={26} dim="rgba(255,255,255,0.28)" />
                 {typeof d.change7d === 'number' && d.change7d > 0 && <div className="pf-trend-up">▲ +{d.change7d.toFixed(1)} this week. Keep it up!</div>}
                 {(d.slipping || (typeof d.change7d === 'number' && d.change7d < 0)) && (
