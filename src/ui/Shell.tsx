@@ -1,7 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from '../lib/router';
 import { Avatar, Icon } from './kit';
-import { StoreButtons } from './AppBanner';
+import { StoreButtons, detectPlatform, storeLink } from './AppBanner';
 import { APP_LINKS, ENV_NAME } from '../lib/env';
 import { useAuth } from '../lib/auth';
 import { useQuery } from '../lib/query';
@@ -69,6 +69,11 @@ export function Shell({ children, wide }: { children: React.ReactNode; wide?: bo
       <header className="topbar">
         {brand}
         <div className="grow" />
+        {detectPlatform() !== 'other' && (
+          <a className="topbar-getapp" href={storeLink()} target="_blank" rel="noreferrer">
+            Get app
+          </a>
+        )}
         <Link to="/notifications" className="icon-btn" title="Notifications">
           <Icon name="bell" />
           {notif > 0 && <span className="badge">{notif > 99 ? '99+' : notif}</span>}

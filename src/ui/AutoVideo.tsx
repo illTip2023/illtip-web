@@ -35,14 +35,22 @@ export function AutoVideo({ src, poster, className, onTap }: { src: string; post
   // iPhones only decode a few videos at once and show the rest as black boxes: only videos near the screen get a
   // source, and the thumbnail covers the video until it is actually playing.
   const [near, setNear] = useState(false);
+  // Within about a screen: buffer it fully so it starts the moment it scrolls in.
+  const [soon, setSoon] = useState(false);
+  const [thumbReady, setThumbReady] = useState(false);
   const [playing, setPlaying] = useState(false);
   const wrap = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const el = wrap.current;
     if (!el) return;
     const io = new IntersectionObserver((es) => es.forEach((e) => setNear(e.isIntersecting)), { rootMargin: '200% 0px 200% 0px' });
+    const io2 = new IntersectionObserver((es) => es.forEach((e) => setSoon(e.isIntersecting)), { rootMargin: '100% 0px 100% 0px' });
     io.observe(el);
-    return () => io.disconnect();
+    io2.observe(el);
+    return () => {
+      io.disconnect();
+      io2.disconnect();
+    };
   }, []);
   // Far away: the source is dropped, so the thumbnail must cover it again when it comes back.
   useEffect(() => {
@@ -150,13 +158,15 @@ export function AutoVideo({ src, poster, className, onTap }: { src: string; post
         muted={muted}
         playsInline
         loop
-        preload="metadata"
+        preload={soon ? 'auto' : 'metadata'}
         controls={!onTap}
         controlsList="nodownload noplaybackrate"
         disablePictureInPicture
         onClick={onTap}
       />
-      {poster && !playing && onTap && <img className="autovideo-poster" src={poster} alt="" onClick={onTap} />}
+      {poster && !playing && onTap && (
+        <img className={'autovideo-poster' + (thumbReady ? ' ready' : '')} src={poster} alt="" onClick={onTap} onLoad={() => setThumbReady(true)} decoding="async" {...({ fetchpriority: soon ? 'high' : 'auto' } as any)} />
+      )}
       <button type="button" className="autovideo-sound" aria-label={muted ? 'Turn sound on' : 'Mute'} onClick={toggleSound}>
         {muted ? '🔇' : '🔊'}
       </button>
