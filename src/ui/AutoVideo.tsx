@@ -105,7 +105,8 @@ export function AutoVideo({ src, poster, className, onTap }: { src: string; post
       v.removeEventListener('pause', onPauseByUser);
       v.removeEventListener('playing', onPlaying);
       v.removeEventListener('emptied', onStop);
-      v.pause();
+      // The 'pause' event arrives later (after the next run has added its listeners), so flag it as ours.
+      autoPause(v);
       players.delete(v);
     };
   }, [src, near]);
