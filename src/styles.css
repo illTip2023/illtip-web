@@ -216,4 +216,4 @@ video.hp-clickable { cursor: pointer; }
 }
 /* A video with no thumbnail shows its first frame instead of a black box while it loads. */
 .hp-video { background: #111; }
-.autovideo-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; cursor: pointer; }
+.autovideo-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #1b2232; cursor: pointer; }

@@ -40,10 +40,14 @@ export function AutoVideo({ src, poster, className, onTap }: { src: string; post
   useEffect(() => {
     const el = wrap.current;
     if (!el) return;
-    const io = new IntersectionObserver((es) => es.forEach((e) => setNear(e.isIntersecting)), { rootMargin: '120% 0px 120% 0px' });
+    const io = new IntersectionObserver((es) => es.forEach((e) => setNear(e.isIntersecting)), { rootMargin: '200% 0px 200% 0px' });
     io.observe(el);
     return () => io.disconnect();
   }, []);
+  // Far away: the source is dropped, so the thumbnail must cover it again when it comes back.
+  useEffect(() => {
+    if (!near) setPlaying(false);
+  }, [near]);
 
   useEffect(() => {
     const on = (v: boolean) => setMuted(!v);
@@ -83,9 +87,18 @@ export function AutoVideo({ src, poster, className, onTap }: { src: string; post
       userPaused.current = false;
       pauseOthers(v);
     };
-    const onPlaying = () => setPlaying(true);
+    // Only uncover the video once a real frame is on screen (iPhones report "playing" while still black).
+    let frameCb = 0;
+    const onPlaying = () => {
+      const anyV = v as any;
+      if (typeof anyV.requestVideoFrameCallback === 'function') frameCb = anyV.requestVideoFrameCallback(() => setPlaying(true));
+    };
+    const onTime = () => {
+      if (v.currentTime > 0.15 && !v.paused) setPlaying(true);
+    };
     const onStop = () => setPlaying(false);
     v.addEventListener('playing', onPlaying);
+    v.addEventListener('timeupdate', onTime);
     v.addEventListener('emptied', onStop);
     const onPauseByUser = () => {
       if (autoPaused.has(v)) {
@@ -104,7 +117,9 @@ export function AutoVideo({ src, poster, className, onTap }: { src: string; post
       v.removeEventListener('play', onPlay);
       v.removeEventListener('pause', onPauseByUser);
       v.removeEventListener('playing', onPlaying);
+      v.removeEventListener('timeupdate', onTime);
       v.removeEventListener('emptied', onStop);
+      if (frameCb && typeof (v as any).cancelVideoFrameCallback === 'function') (v as any).cancelVideoFrameCallback(frameCb);
       // The 'pause' event arrives later (after the next run has added its listeners), so flag it as ours.
       autoPause(v);
       players.delete(v);
