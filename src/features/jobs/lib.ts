@@ -216,12 +216,14 @@ export function buildLocation(item: Row): string {
   return parts.length ? parts.join(', ') : 'Unknown location';
 }
 
-export function currencySymbolFor(location: string, currency?: { symbol?: unknown } | null, text = ''): string {
+export function currencySymbolFor(location: string, currency?: { symbol?: unknown; code?: unknown } | null, text = '', maxAmount = 0): string {
   const loc = location.toLowerCase();
-  if (/\bnigeria\b/.test(loc)) return '₦';
-  // Naira pay is often saved with a USD currency by the CRM (e.g. "Remote Worldwide … Salary: NGN1,000,000").
-  // If the job text talks about naira, never show "$".
-  if (/\bNGN\b|₦|\bnaira\b/i.test(text)) return '₦';
+  const code = typeof currency?.code === 'string' ? currency.code.toUpperCase() : '';
+  if (code === 'NGN') return '₦';
+  // Naira is often saved under USD by the CRM (big numbers like 250,000 for a Lagos role, or "Salary: NGN1,000,000").
+  // Small amounts on Nigerian jobs are real dollar figures typed in the app, so only large ones count as naira.
+  const nigerian = /\bnigeria\b/.test(loc) || /\bNGN\b|₦|\bnaira\b/i.test(text);
+  if (nigerian && maxAmount >= 5000) return '₦';
   if (/\bunited kingdom\b/.test(loc) || /\bengland\b/.test(loc) || /\blondon\b/.test(loc) || /\b uk\b/.test(loc)) return '£';
   const sym = typeof currency?.symbol === 'string' ? currency.symbol.trim() : '';
   return sym || '$';
@@ -398,7 +400,7 @@ export function mapJob(row: Row, userId?: string | null, services?: MasterServic
     posterAvatar: poster.avatar,
     posterVerified: poster.verified,
     location,
-    currency: currencySymbolFor(location, row.currency, `${str(row.serviceName)} ${str(row.workDec ?? row.description)}`),
+    currency: currencySymbolFor(location, row.currency, `${str(row.serviceName)} ${str(row.workDec ?? row.description)}`, Math.max(Number(String(min).replace(/,/g, '')) || 0, Number(String(max).replace(/,/g, '')) || 0)),
     payMin: min,
     payMax: max,
     neededBy: formatDate(toMs(row.workTime ?? row.date)),
