@@ -267,9 +267,11 @@ const usd = (n: number) => '$' + (n >= 100 ? Math.round(n / 10) * 10 : Math.roun
  */
 export function payRangeText(job: Pick<Job, 'currency' | 'payMin' | 'payMax'>): string {
   const ok = (v: string) => v && v !== '0' && num(v) > 0;
-  const lo = ok(job.payMin) ? num(job.payMin) : 0;
-  const hi = ok(job.payMax) ? num(job.payMax) : 0;
+  let lo = ok(job.payMin) ? num(job.payMin) : 0;
+  let hi = ok(job.payMax) ? num(job.payMax) : 0;
   if (!lo && !hi) return '';
+  // Typed the wrong way round (e.g. 500,000 - 60,000): show low to high.
+  if (lo && hi && lo > hi) [lo, hi] = [hi, lo];
   if (job.currency === '₦') {
     const a = lo && usd(lo / NGN_PER_USD);
     const b = hi && usd(hi / NGN_PER_USD);
