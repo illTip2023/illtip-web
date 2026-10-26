@@ -138,7 +138,8 @@ export function JobDetailsPage() {
               <Fact icon="money" label="Pay range" value={payRangeText(job) || 'Pay range not provided'} accent={!!payRangeText(job)} />
               {nairaNote(job) && <div className="muted tiny" style={{ gridColumn: '1 / -1', marginTop: -4 }}>{nairaNote(job)}</div>}
               <Fact icon="calendar" label="Service needed by" value={job.neededBy || 'Not specified'} />
-              {job.link && <Fact icon="globe" label="Website" value={<a href={job.link} target="_blank" rel="noreferrer" className="ellipsis" style={{ display: 'block' }}>{job.link.replace(/^https?:\/\//, '')}</a>} />}
+              {/* Like the app: the employer's website shows only after applying (or to the poster); everyone else goes through Apply Now → plan check. */}
+              {job.link && (isPoster || !!job.appStatus) && <Fact icon="globe" label="Website" value={<a href={job.link} target="_blank" rel="noreferrer" className="ellipsis" style={{ display: 'block' }}>{job.link.replace(/^https?:\/\//, '')}</a>} />}
             </div>
             <div className="jb-dhead-actions">
               <button className={'btn btn-ghost btn-sm' + (saved.has(job.id) ? ' jb-saved-btn' : '')} onClick={() => saved.toggle(job)} aria-pressed={saved.has(job.id)}>
