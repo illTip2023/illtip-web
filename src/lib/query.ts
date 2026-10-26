@@ -125,13 +125,31 @@ export function useInfinite<T>(key: string | null, fetchPage: (page: number) => 
 export function useOnVisible(onVisible: () => void) {
   const ref = useRef<HTMLDivElement | null>(null);
   const cb = useRef(onVisible);
+  const visible = useRef(false);
   cb.current = onVisible;
   useEffect(() => {
     const el = ref.current;
     if (!el) return;
-    const io = new IntersectionObserver((es) => es.some((e) => e.isIntersecting) && cb.current(), { rootMargin: '600px' });
+    const io = new IntersectionObserver(
+      (es) => {
+        visible.current = es.some((e) => e.isIntersecting);
+        if (visible.current) cb.current();
+      },
+      { rootMargin: '600px' }
+    );
     io.observe(el);
     return () => io.disconnect();
   }, []);
+  // The observer only reports changes: if the end of the list is still on screen after a page loads
+  // (or a load was skipped because another was running), ask again after every render.
+  // Only when the list actually grew (the marker moved), so a failing request is never retried in a loop.
+  const lastTop = useRef(-1);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || !visible.current || el.offsetTop === lastTop.current) return;
+    lastTop.current = el.offsetTop;
+    const t = setTimeout(() => visible.current && cb.current(), 150);
+    return () => clearTimeout(t);
+  });
   return ref;
 }
