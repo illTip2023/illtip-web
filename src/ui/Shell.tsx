@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from '../lib/router';
 import { Icon } from './kit';
+import { StoreButtons } from './AppBanner';
 import { APP_LINKS, ENV_NAME } from '../lib/env';
 import { useAuth } from '../lib/auth';
 import { useQuery } from '../lib/query';
@@ -58,7 +59,8 @@ export function Shell({ children, wide }: { children: React.ReactNode; wide?: bo
         </nav>
         <div className="spacer" />
         <div className="get-app">
-          Get the app: <a href={APP_LINKS.ios} target="_blank" rel="noreferrer">iPhone</a> · <a href={APP_LINKS.android} target="_blank" rel="noreferrer">Android</a>
+          <div className="get-app-title">Get the i'llTip app</div>
+          <StoreButtons compact />
         </div>
       </aside>
       <header className="topbar">
@@ -78,8 +80,10 @@ export function Shell({ children, wide }: { children: React.ReactNode; wide?: bo
       <nav className="tabbar">
         {TABS.map((t) => (
           <Link key={t.to} to={t.to} className={t.match(pathname) ? 'active' : ''}>
-            <Icon name={t.icon} />
-            {t.label}
+            <span className="tab-pill">
+              <Icon name={t.icon} />
+            </span>
+            <span className="tab-label">{t.label}</span>
           </Link>
         ))}
       </nav>

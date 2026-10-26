@@ -6,6 +6,7 @@ import { installLinkInterceptor, navigate, resolveRoute, RouteView, useLocation 
 import { ROUTES } from './routes';
 import { Shell } from './ui/Shell';
 import { ErrorBoundary } from './ui/ErrorBoundary';
+import { AppBanner } from './ui/AppBanner';
 import { Empty, Toaster } from './ui/kit';
 import { applyTheme, getThemePref } from './features/settings/theme';
 
@@ -84,6 +85,7 @@ installLinkInterceptor();
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <AuthProvider>
+      <AppBanner />
       <App />
       <Toaster />
     </AuthProvider>

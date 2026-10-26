@@ -162,3 +162,30 @@ h2 { font-size: 17px; }
 .autovideo-sound:hover { background: rgba(0, 0, 0, 0.75); }
 
 @media (max-width: 860px) { .env-pill { bottom: auto; top: 58px; right: 8px; } }
+
+/* Get-the-app banner (phones) */
+.app-banner { display: flex; align-items: center; gap: 10px; padding: 8px 12px 8px 6px; background: var(--card); border-bottom: 1px solid var(--line); position: relative; z-index: 30; }
+.app-banner img { width: 40px; height: 40px; border-radius: 10px; flex: none; }
+.app-banner-x { background: none; border: none; color: var(--muted); font-size: 22px; line-height: 1; padding: 4px 6px; }
+.app-banner-title { font-weight: 700; font-size: 14px; }
+.app-banner-sub { font-size: 12px; color: var(--muted); }
+.app-banner-btn { background: var(--blue); color: #fff; font-weight: 700; padding: 8px 16px; border-radius: 999px; font-size: 14px; flex: none; }
+.app-banner ~ .shell .topbar { top: 0; }
+@media (min-width: 861px) { .app-banner { display: none; } }
+
+/* Store buttons */
+.store-btns { display: flex; flex-direction: column; gap: 8px; margin-top: 8px; }
+.store-btn { display: flex; flex-direction: column; background: #000; color: #fff !important; border-radius: 10px; padding: 6px 12px; border: 1px solid rgba(255, 255, 255, 0.25); line-height: 1.15; }
+.store-btn-top { font-size: 10px; opacity: 0.85; }
+.store-btn-big { font-size: 15px; font-weight: 700; }
+.get-app-title { font-weight: 700; color: #fff; font-size: 13px; }
+
+/* Mobile tab bar styled like the app: floating navy bar, active tab in a white pill */
+@media (max-width: 860px) {
+  .tabbar { left: 10px; right: 10px; bottom: calc(10px + env(safe-area-inset-bottom)); border-radius: 26px; padding: 8px 4px; box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25); }
+  .tabbar a { gap: 3px; font-size: 11px; color: rgba(255, 255, 255, 0.82); }
+  .tabbar .tab-pill { display: flex; align-items: center; justify-content: center; width: 52px; height: 32px; border-radius: 16px; transition: background 0.15s; }
+  .tabbar a.active .tab-pill { background: #fff; color: var(--navy); }
+  .tabbar a.active { color: #fff; font-weight: 600; }
+  .content { padding-bottom: 110px; }
+}

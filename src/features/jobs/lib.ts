@@ -216,9 +216,12 @@ export function buildLocation(item: Row): string {
   return parts.length ? parts.join(', ') : 'Unknown location';
 }
 
-export function currencySymbolFor(location: string, currency?: { symbol?: unknown } | null): string {
+export function currencySymbolFor(location: string, currency?: { symbol?: unknown } | null, text = ''): string {
   const loc = location.toLowerCase();
   if (/\bnigeria\b/.test(loc)) return '₦';
+  // Naira pay is often saved with a USD currency by the CRM (e.g. "Remote Worldwide … Salary: NGN1,000,000").
+  // If the job text talks about naira, never show "$".
+  if (/\bNGN\b|₦|\bnaira\b/i.test(text)) return '₦';
   if (/\bunited kingdom\b/.test(loc) || /\bengland\b/.test(loc) || /\blondon\b/.test(loc) || /\b uk\b/.test(loc)) return '£';
   const sym = typeof currency?.symbol === 'string' ? currency.symbol.trim() : '';
   return sym || '$';
@@ -356,7 +359,7 @@ export function mapJob(row: Row, userId?: string | null, services?: MasterServic
     posterAvatar: poster.avatar,
     posterVerified: poster.verified,
     location,
-    currency: currencySymbolFor(location, row.currency),
+    currency: currencySymbolFor(location, row.currency, `${str(row.serviceName)} ${str(row.workDec ?? row.description)}`),
     payMin: min,
     payMax: max,
     neededBy: formatDate(toMs(row.workTime ?? row.date)),
