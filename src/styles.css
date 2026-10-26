@@ -161,7 +161,7 @@ h2 { font-size: 17px; }
 .autovideo-sound { position: absolute; right: 10px; top: 10px; width: 36px; height: 36px; border-radius: 50%; border: none; background: rgba(0, 0, 0, 0.55); color: #fff; font-size: 16px; display: flex; align-items: center; justify-content: center; z-index: 2; }
 .autovideo-sound:hover { background: rgba(0, 0, 0, 0.75); }
 
-@media (max-width: 860px) { .env-pill { bottom: auto; top: 58px; right: 8px; } }
+@media (max-width: 860px) { .env-pill { bottom: 96px; top: auto; left: 8px; right: auto; font-size: 10px; opacity: .85; pointer-events: none; } }
 
 /* Get-the-app banner (phones) */
 .app-banner { display: flex; align-items: center; gap: 10px; padding: 8px 12px 8px 6px; background: var(--card); border-bottom: 1px solid var(--line); position: relative; z-index: 30; }

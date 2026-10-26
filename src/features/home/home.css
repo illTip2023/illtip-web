@@ -210,3 +210,8 @@ button.hp-tip:hover { filter: brightness(0.97); box-shadow: inset 0 0 0 1px rgba
 .hp-mention-opt { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 12px; border: 0; background: transparent; text-align: left; cursor: pointer; color: inherit; }
 .hp-mention-opt:hover, .hp-mention-opt:focus { background: var(--bg); }
 @media (max-width: 600px) { .hp-mentions { margin-left: 0; } }
+
+/* Home header + composer: sticky, hides on scroll down, returns on scroll up (like the app) */
+.hp-feedhead { position: sticky; z-index: 15; background: var(--bg); padding-top: 6px; margin-top: -6px; transition: transform .22s ease, opacity .22s ease; will-change: transform; }
+.hp-feedhead.hidden { transform: translateY(calc(-100% - 70px)); opacity: 0; pointer-events: none; }
+.hp-feedhead .hp-composer { margin-bottom: 12px; }

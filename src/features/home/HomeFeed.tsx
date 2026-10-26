@@ -109,8 +109,40 @@ export function HomeFeed() {
 
   const initial = loading && !items.length;
 
+  /* Like the app: the Home header (search, saved, refresh) and the composer slide away when you scroll down
+     and come back as soon as you scroll up. */
+  const headRef = useRef<HTMLDivElement | null>(null);
+  const [headHidden, setHeadHidden] = useState(false);
+  const [headTop, setHeadTop] = useState(0);
+  useEffect(() => {
+    const measure = () => {
+      const bar = document.querySelector('.topbar') as HTMLElement | null;
+      setHeadTop(bar && getComputedStyle(bar).display !== 'none' ? bar.offsetHeight : 0);
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    let lastY = window.scrollY;
+    const onScroll = () => {
+      const y = window.scrollY;
+      const dy = y - lastY;
+      lastY = y;
+      const head = headRef.current;
+      const h = head ? head.offsetHeight : 0;
+      if (y <= h + 48) return setHeadHidden(false);
+      if (head && head.contains(document.activeElement)) return setHeadHidden(false); // typing a post
+      if (dy < -4) setHeadHidden(false);
+      else if (dy > 6) setHeadHidden(true);
+    };
+    window.addEventListener('scroll', onScroll, { passive: true });
+    return () => {
+      window.removeEventListener('resize', measure);
+      window.removeEventListener('scroll', onScroll);
+    };
+  }, []);
+
   return (
     <div className="hp-page">
+      <div ref={headRef} className={'hp-feedhead' + (headHidden ? ' hidden' : '')} style={{ top: headTop }}>
       <div className="hp-topbar">
         <h1>Home</h1>
         <div className="row" style={{ gap: 4 }}>
@@ -127,6 +159,7 @@ export function HomeFeed() {
       </div>
 
       <Composer onCreated={onCreated} />
+      </div>
 
       <div className="hp-list">
         {initial && [0, 1, 2].map((i) => <PostSkeleton key={i} />)}
