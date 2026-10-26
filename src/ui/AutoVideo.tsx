@@ -8,15 +8,22 @@ const players = new Set<HTMLVideoElement>();
 let soundOn = false;
 const soundListeners = new Set<(v: boolean) => void>();
 
+/** Pauses we make ourselves (scrolling away, another video starting) must not count as the user pausing. */
+const autoPaused = new WeakSet<HTMLVideoElement>();
+function autoPause(v: HTMLVideoElement) {
+  if (v.paused) return;
+  autoPaused.add(v);
+  v.pause();
+}
 function pauseOthers(me: HTMLVideoElement) {
   players.forEach((v) => {
-    if (v !== me && !v.paused) v.pause();
+    if (v !== me) autoPause(v);
   });
 }
 
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => {
-    if (document.hidden) players.forEach((v) => v.pause());
+    if (document.hidden) players.forEach((v) => autoPause(v));
   });
 }
 
@@ -63,8 +70,8 @@ export function AutoVideo({ src, poster, className, onTap }: { src: string; post
               setMuted(true);
               v.play().catch(() => {});
             });
-          } else if (!v.paused) {
-            v.pause();
+          } else {
+            autoPause(v);
           }
         }
       },
@@ -72,6 +79,7 @@ export function AutoVideo({ src, poster, className, onTap }: { src: string; post
     );
     io.observe(v);
     const onPlay = () => {
+      autoPaused.delete(v);
       userPaused.current = false;
       pauseOthers(v);
     };
@@ -80,6 +88,10 @@ export function AutoVideo({ src, poster, className, onTap }: { src: string; post
     v.addEventListener('playing', onPlaying);
     v.addEventListener('emptied', onStop);
     const onPauseByUser = () => {
+      if (autoPaused.has(v)) {
+        autoPaused.delete(v);
+        return;
+      }
       // A pause while the video is still mostly visible = the user paused it; don't auto-resume.
       const r = v.getBoundingClientRect();
       const visible = Math.max(0, Math.min(r.bottom, innerHeight) - Math.max(r.top, 0)) / Math.max(1, r.height);
