@@ -238,17 +238,56 @@ function extractPay(item: Row): { min: string; max: string } {
   return { min: clean(item.payRangeMin ?? item.minBudget ?? item.minAmount), max: clean(item.payRangeMax ?? item.maxBudget ?? item.maxAmount) };
 }
 
-/** "₦5,000 - ₦10,000" exactly as the API gives the amounts; '' if none. */
+/** USD→NGN rate: same live source as the backend (wallet.service.js), cached for the session; backend fallback 1496.96. */
+let NGN_PER_USD = 1496.96;
+(async () => {
+  try {
+    const c = sessionStorage.getItem('illtip.ngnRate');
+    if (c) NGN_PER_USD = Number(c) || NGN_PER_USD;
+    const r = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+    const d = await r.json();
+    const v = Number(d?.rates?.NGN);
+    if (v > 100) {
+      NGN_PER_USD = v;
+      sessionStorage.setItem('illtip.ngnRate', String(v));
+    }
+  } catch {
+    /* keep fallback */
+  }
+})();
+
+const num = (v: string) => Number(String(v).replace(/,/g, ''));
+const usd = (n: number) => '$' + (n >= 100 ? Math.round(n / 10) * 10 : Math.round(n)).toLocaleString('en-US');
+
+/**
+ * Pay text. Naira amounts are shown in US dollars (Bosun, 26 Oct: "we want most of the jobs to show in $"),
+ * converted at today's rate; other currencies as the API gives them. '' if none.
+ */
 export function payRangeText(job: Pick<Job, 'currency' | 'payMin' | 'payMax'>): string {
+  const ok = (v: string) => v && v !== '0' && num(v) > 0;
+  const lo = ok(job.payMin) ? num(job.payMin) : 0;
+  const hi = ok(job.payMax) ? num(job.payMax) : 0;
+  if (!lo && !hi) return '';
+  if (job.currency === '₦') {
+    const a = lo && usd(lo / NGN_PER_USD);
+    const b = hi && usd(hi / NGN_PER_USD);
+    if (a && b && a !== b) return `${a} - ${b}`;
+    return (a || b) as string;
+  }
   const sym = job.currency;
-  const ok = (v: string) => v && v !== '0';
-  // Add thousands separators to plain numbers (50000 -> 50,000); leave already-formatted values alone.
-  const fmt = (v: string) => (/^\d{4,}(\.\d+)?$/.test(v) ? Number(v).toLocaleString('en-US') : v);
-  job = { ...job, payMin: ok(job.payMin) ? fmt(job.payMin) : job.payMin, payMax: ok(job.payMax) ? fmt(job.payMax) : job.payMax };
-  if (ok(job.payMin) && ok(job.payMax) && job.payMin !== job.payMax) return `${sym}${job.payMin} - ${sym}${job.payMax}`;
-  if (ok(job.payMin)) return `${sym}${job.payMin}`;
-  if (ok(job.payMax)) return `${sym}${job.payMax}`;
-  return '';
+  const fmt = (n: number) => n.toLocaleString('en-US');
+  if (lo && hi && lo !== hi) return `${sym}${fmt(lo)} - ${sym}${fmt(hi)}`;
+  return `${sym}${fmt(lo || hi)}`;
+}
+
+/** For naira jobs: the original amount, shown as a note next to the converted dollars. */
+export function nairaNote(job: Pick<Job, 'currency' | 'payMin' | 'payMax'>): string {
+  if (job.currency !== '₦') return '';
+  const lo = num(job.payMin) || 0;
+  const hi = num(job.payMax) || 0;
+  if (!lo && !hi) return '';
+  const f = (n: number) => '₦' + n.toLocaleString('en-US');
+  return `Converted from ${lo && hi && lo !== hi ? `${f(lo)} - ${f(hi)}` : f(lo || hi)} at today's rate`;
 }
 
 function normalizeHashtags(raw: unknown): string[] {

@@ -21,6 +21,7 @@ import {
   normalizeResume,
   parseDescription,
   payRangeText,
+  nairaNote,
   recordJobView,
   ResumeDetails,
   shareJob,
@@ -135,6 +136,7 @@ export function JobDetailsPage() {
             <div className="jb-facts">
               <Fact icon="pin" label="Location" value={job.location} />
               <Fact icon="money" label="Pay range" value={payRangeText(job) || 'Pay range not provided'} accent={!!payRangeText(job)} />
+              {nairaNote(job) && <div className="muted tiny" style={{ gridColumn: '1 / -1', marginTop: -4 }}>{nairaNote(job)}</div>}
               <Fact icon="calendar" label="Service needed by" value={job.neededBy || 'Not specified'} />
               {job.link && <Fact icon="globe" label="Website" value={<a href={job.link} target="_blank" rel="noreferrer" className="ellipsis" style={{ display: 'block' }}>{job.link.replace(/^https?:\/\//, '')}</a>} />}
             </div>
