@@ -204,3 +204,9 @@ button.hp-tip:hover { filter: brightness(0.97); box-shadow: inset 0 0 0 1px rgba
   .hp-card, .hp-composer { border-radius: 16px; }
   .hp-skel .sk-media { border-radius: 0 0 16px 16px; }
 }
+
+/* @mention picker in the composer */
+.hp-mentions { margin: 6px 0 4px 52px; border: 1px solid var(--line); border-radius: 12px; background: var(--card); max-height: 280px; overflow-y: auto; box-shadow: 0 6px 20px rgba(0,0,0,.08); }
+.hp-mention-opt { display: flex; align-items: center; gap: 10px; width: 100%; padding: 8px 12px; border: 0; background: transparent; text-align: left; cursor: pointer; color: inherit; }
+.hp-mention-opt:hover, .hp-mention-opt:focus { background: var(--bg); }
+@media (max-width: 600px) { .hp-mentions { margin-left: 0; } }

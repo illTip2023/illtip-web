@@ -334,9 +334,16 @@ export function resolveAppStatus(row: Row, userId?: string | null): AppStatus | 
   return null;
 }
 
+/** Like the app (JobDetailsScreen): a website saved without http(s):// still works as a link. */
+export function withScheme(raw: string): string {
+  const t = raw.trim();
+  if (!t || /\s/.test(t) || !/\.[a-z]{2,}/i.test(t)) return '';
+  return /^https?:\/\//i.test(t) ? t : `https://${t}`;
+}
+
 /** Mobile: utils/jobFeedVisibility.ts — hired internal jobs drop out of the feed 24h after hire (except for applicants). */
 function hideFromFeed(row: Row, userId?: string | null): boolean {
-  if (/^https?:\/\//i.test(str(row.link).trim())) return false;
+  if (withScheme(str(row.link))) return false;
   const hired = actionEntries(row).filter((a) => String(a.actionName ?? '').toLowerCase() === 'accepted' && String(a.actionStatus ?? '').toLowerCase() === 'resolved');
   if (!hired.length) return false;
   const uid = String(userId ?? '').trim().toLowerCase();
@@ -411,7 +418,7 @@ export function mapJob(row: Row, userId?: string | null, services?: MasterServic
     image: listing || fallbackImage(services, serviceId, skillId, service, skill || serviceName),
     hashtags: normalizeHashtags(row.hashtags),
     description: str(row.workDec ?? row.description ?? row.modelDec ?? row.workDescription),
-    link: /^https?:\/\//i.test(str(row.link).trim()) ? str(row.link).trim() : '',
+    link: withScheme(str(row.link)),
     shareUrl: str(row.shareUrl).trim() || undefined,
     questions: Array.isArray(row.questions)
       ? row.questions

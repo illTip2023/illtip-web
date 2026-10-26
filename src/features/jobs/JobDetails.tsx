@@ -710,7 +710,15 @@ function ApplyPanel({ job, row, onApplied, refreshing }: { job: ReturnType<typeo
       <ConfirmModal
         open={askExternal}
         title="Did you apply?"
-        message="Have you completed your application on the external site?"
+        message={
+          <>
+            Have you completed your application on the external site?
+            <br />
+            <a href={job.link} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600 }}>
+              Open the employer's website ↗
+            </a>
+          </>
+        }
         confirmLabel="Yes, I applied"
         cancelLabel="Not yet"
         busy={busy}

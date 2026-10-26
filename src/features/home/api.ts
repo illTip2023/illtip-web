@@ -228,8 +228,22 @@ export async function flagPost(statusPostId: number) {
   return unwrap(await api.post('/post/flag', { statusPostId, flagAction: 'ADD' }));
 }
 
-export async function editPost(statusPostId: number, caption: string) {
-  return unwrap(await api.post('/post/edit', { statusPostId, caption }));
+/** Re-finds each existing @mention in the edited caption so its position stays right (the app does the same). */
+export function remapMentions(caption: string, mentions: Mention[] | undefined): Mention[] {
+  const out: Mention[] = [];
+  let from = 0;
+  for (const m of [...(mentions || [])].sort((a, b) => a.start - b.start)) {
+    const needle = '@' + m.displayName;
+    const at = caption.indexOf(needle, from);
+    if (at < 0) continue;
+    out.push({ ...m, start: at, length: needle.length });
+    from = at + needle.length;
+  }
+  return out;
+}
+
+export async function editPost(statusPostId: number, caption: string, mentions?: Mention[]) {
+  return unwrap(await api.post('/post/edit', { statusPostId, caption, mentions: remapMentions(caption, mentions) }));
 }
 
 export async function fetchComments(p: Post): Promise<Comment[]> {
@@ -285,7 +299,7 @@ export async function uploadImage(file: File): Promise<any[]> {
   throw new Error('Image upload failed');
 }
 
-export type NewPost = { caption: string; imageArr: any[]; poll?: { question: string; options: string[]; durationHours: 24 | 48 | 72 } };
+export type NewPost = { caption: string; imageArr: any[]; mentions?: Mention[]; poll?: { question: string; options: string[]; durationHours: 24 | 48 | 72 } };
 
 export async function createPost(body: NewPost): Promise<number | null> {
   const res = await api.post('/post', { mentions: [], ...body });
@@ -300,6 +314,12 @@ export async function searchPeople(q: string, pageIndex: number): Promise<any[]>
   if (Array.isArray(data)) return data;
   const inner = data?.data ?? data?.users ?? data?.people;
   return Array.isArray(inner) ? inner : [];
+}
+
+/** The exact name the backend checks a tag against (lib/userLookup resolvePosterDisplayName: userName ?? fullName). */
+export function mentionNameOf(raw: any): string {
+  const first = [raw?.firstName, raw?.lastName].map((x) => String(x ?? '').trim()).filter(Boolean).join(' ');
+  return String(raw?.userName ?? raw?.fullName ?? first ?? '').trim();
 }
 
 export function personFromRaw(raw: any) {

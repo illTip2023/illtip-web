@@ -12,6 +12,7 @@ import {
   coinTotal,
   deletePost,
   editPost,
+  remapMentions,
   epochMs,
   errMsg,
   fetchCoinBalance,
@@ -454,8 +455,9 @@ function EditModal({ post, caption, open, onClose }: { post: Post; caption: stri
   const save = async () => {
     setBusy(true);
     try {
-      await editPost(Number(post.statusPostId), text.trim());
-      patchPost(Number(post.statusPostId), { caption: text.trim() });
+      const mentions = remapMentions(text.trim(), post.mentions);
+      await editPost(Number(post.statusPostId), text.trim(), post.mentions);
+      patchPost(Number(post.statusPostId), { caption: text.trim(), mentions });
       toast.ok('Post updated.');
       onClose();
     } catch (e) {
@@ -649,7 +651,7 @@ export function PostCard({ post, detail, onDeleted, onCommentClick }: { post: Po
       </header>
 
       <PostMedia post={post} onOpenImage={detail ? (i) => setLightbox(i) : open ? () => open() : undefined} onOpenPost={open} />
-      <Caption post={post} text={caption} full={detail} onOpen={open} />
+      <Caption post={patch.mentions ? { ...post, mentions: patch.mentions } : post} text={caption} full={detail} onOpen={open} />
       <PollCard post={post} />
 
       <footer className="hp-actions">

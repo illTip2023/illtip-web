@@ -239,7 +239,7 @@ function RequestForm({ onReset }: { onReset: () => void }) {
         date: new Date(date),
         payment: [Number(payMin) || 0, Number(payMax) || 0],
         currency: { symbol: currency.symbol, code: currency.code },
-        link: link.trim(),
+        link: link.trim() && !/^https?:\/\//i.test(link.trim()) ? `https://${link.trim()}` : link.trim(),
         contact: contact.trim(),
         hashtags: tags,
         questions: hasHire ? questions : [],

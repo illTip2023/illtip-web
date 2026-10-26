@@ -51,6 +51,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         // The backend answers unknown emails / wrong passwords with 4xx + { success:false, message }.
         res = e?.data && typeof e.data === 'object' ? e.data : { success: false, message: e?.message };
         if (!e?.status || e.status >= 500) throw new Error('Could not reach i\'llTip. Check your connection and try again.');
+        // Accounts from the old one-time-code sign-in have no password yet: show the backend's "use Forgot Password" message as is (like the app).
+        if (e.status === 403 && res?.message) throw new Error(String(res.message));
       }
       if (!res?.success || !res?.data) {
         const m = String(res?.message ?? '');

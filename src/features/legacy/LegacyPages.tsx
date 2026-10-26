@@ -26,6 +26,10 @@ export function InformationPage() {
 const CODE_RE = /^[A-Z0-9]{8,16}$/;
 
 export function ReferralPage() {
+  return <ReferralLanding />;
+}
+
+function ReferralLanding() {
   const raw = (new URLSearchParams(location.search).get('code') || '').trim().toUpperCase();
   const code = CODE_RE.test(raw) ? raw : null;
   const platform = detectPlatform();

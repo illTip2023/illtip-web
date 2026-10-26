@@ -3,7 +3,7 @@ import { useAuth } from '../../lib/auth';
 import { APP_LINKS } from '../../lib/env';
 import { Avatar, Icon, toast } from '../../ui/kit';
 import { I } from './icons';
-import { createPost, errMsg, getPost, MAX_ATTACHMENTS, uploadImage, type Post } from './api';
+import { createPost, errMsg, getPost, MAX_ATTACHMENTS, mentionNameOf, personFromRaw, remapMentions, searchPeople, uploadImage, type Mention, type Post } from './api';
 
 type Pick = { file: File; url: string };
 const DURATIONS = [24, 48, 72] as const;
@@ -20,6 +20,64 @@ export function Composer({ onCreated }: { onCreated: (p: Post) => void }) {
   const [videoNote, setVideoNote] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
+
+  /* ---- @mentions: type @ and a name (full names with spaces work, e.g. "@Blessing Ikpia") ---- */
+  const [tagged, setTagged] = useState<Mention[]>([]);
+  const [mq, setMq] = useState<{ q: string; start: number } | null>(null);
+  const [people, setPeople] = useState<{ userId: string; name: string; avatar?: string; profession?: string }[]>([]);
+  const [peopleBusy, setPeopleBusy] = useState(false);
+  const detectMention = (value: string, caret: number) => {
+    const before = value.slice(0, caret);
+    const m = before.match(/(?:^|\s)@([^@\n]{0,40})$/);
+    if (!m || m[1].split(/\s+/).filter(Boolean).length > 3 || /\s{2,}$/.test(m[1])) return setMq(null);
+    setMq({ q: m[1], start: caret - m[1].length - 1 });
+  };
+  useEffect(() => {
+    const q = mq?.q.trim() || '';
+    if (!mq || !q) {
+      setPeople([]);
+      return;
+    }
+    let alive = true;
+    setPeopleBusy(true);
+    const t = setTimeout(async () => {
+      try {
+        const rows = await searchPeople(q, 1);
+        if (!alive) return;
+        const ql = q.toLowerCase();
+        const list = rows
+          .map((r) => ({ ...personFromRaw(r), name: mentionNameOf(r) }))
+          .filter((p) => p.userId && p.name && p.userId !== user?.id)
+          .sort((a, b) => Number(!a.name.toLowerCase().startsWith(ql)) - Number(!b.name.toLowerCase().startsWith(ql)) || Number(!a.name.toLowerCase().includes(ql)) - Number(!b.name.toLowerCase().includes(ql)))
+          .slice(0, 8);
+        setPeople(list);
+      } catch {
+        if (alive) setPeople([]);
+      } finally {
+        if (alive) setPeopleBusy(false);
+      }
+    }, 250);
+    return () => {
+      alive = false;
+      clearTimeout(t);
+    };
+  }, [mq?.q]); // eslint-disable-line react-hooks/exhaustive-deps
+  const pickPerson = (p: { userId: string; name: string }) => {
+    if (!mq) return;
+    const ta = taRef.current;
+    const caret = ta ? ta.selectionStart : text.length;
+    const insert = '@' + p.name + ' ';
+    const next = text.slice(0, mq.start) + insert + text.slice(caret);
+    setText(next);
+    setTagged((t) => (t.some((x) => x.userId === p.userId) ? t : [...t, { userId: p.userId, displayName: p.name, start: 0, length: 0 }]));
+    setMq(null);
+    setPeople([]);
+    requestAnimationFrame(() => {
+      const pos = mq.start + insert.length;
+      ta?.focus();
+      ta?.setSelectionRange(pos, pos);
+    });
+  };
 
   useEffect(() => () => files.forEach((f) => URL.revokeObjectURL(f.url)), []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -63,6 +121,8 @@ export function Composer({ onCreated }: { onCreated: (p: Post) => void }) {
   const reset = () => {
     files.forEach((f) => URL.revokeObjectURL(f.url));
     setText('');
+    setTagged([]);
+    setMq(null);
     setFiles([]);
     setPollOn(false);
     setOptions(['', '']);
@@ -95,7 +155,7 @@ export function Composer({ onCreated }: { onCreated: (p: Post) => void }) {
       }
       setBusy('Posting…');
       const id = await createPost(
-        pollOn ? { caption: '', imageArr: [], poll: { question: text.trim(), options: cleanOpts, durationHours: duration } } : { caption: text.trim(), imageArr },
+        pollOn ? { caption: '', imageArr: [], poll: { question: text.trim(), options: cleanOpts, durationHours: duration } } : { caption: text.trim(), imageArr, mentions: remapMentions(text.trim(), tagged) },
       );
       let post: Post | null = null;
       if (id) {
@@ -136,7 +196,11 @@ export function Composer({ onCreated }: { onCreated: (p: Post) => void }) {
           maxLength={pollOn ? 280 : undefined}
           disabled={!!busy}
           onFocus={() => setFocused(true)}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            setText(e.target.value);
+            if (!pollOn) detectMention(e.target.value, e.target.selectionStart ?? e.target.value.length);
+          }}
+          onBlur={() => setTimeout(() => setMq(null), 200)}
           onPaste={(e) => {
             const fs = Array.from(e.clipboardData.files || []) as File[];
             if (fs.length) {
@@ -149,6 +213,21 @@ export function Composer({ onCreated }: { onCreated: (p: Post) => void }) {
           }}
         />
       </div>
+
+      {mq && mq.q.trim() && (
+        <div className="hp-mentions" role="listbox" aria-label="Tag someone">
+          {people.map((p) => (
+            <button key={p.userId} type="button" role="option" className="hp-mention-opt" onMouseDown={(e) => e.preventDefault()} onClick={() => pickPerson(p)}>
+              <Avatar src={p.avatar} name={p.name} size={30} />
+              <span className="grow ellipsis">
+                <b>{p.name}</b>
+                {p.profession && <span className="muted tiny"> · {p.profession}</span>}
+              </span>
+            </button>
+          ))}
+          {!people.length && <div className="muted small" style={{ padding: '8px 12px' }}>{peopleBusy ? 'Searching…' : 'No one found. Try their full name or surname.'}</div>}
+        </div>
+      )}
 
       {files.length > 0 && (
         <div className="hp-thumbs">

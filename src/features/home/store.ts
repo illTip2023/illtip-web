@@ -35,7 +35,7 @@ function makeStore<T>(initial: T) {
 }
 
 /* ----- per-post engagement overrides ----- */
-export type PostPatch = { liked?: boolean; likeCount?: number; coins?: number; comments?: number; caption?: string; deleted?: boolean };
+export type PostPatch = { liked?: boolean; likeCount?: number; coins?: number; comments?: number; caption?: string; mentions?: import('./api').Mention[]; deleted?: boolean };
 const patches = makeStore<Record<number, PostPatch>>({});
 
 export function patchPost(id: number, patch: PostPatch | ((old: PostPatch) => PostPatch)) {
