@@ -44,10 +44,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     session,
     user: session?.user ?? null,
     async login(email, password) {
-      const { data: res } = await api.post('/auth/v2/login', { email: email.trim().toLowerCase(), password });
+      let res: any;
+      try {
+        res = (await api.post('/auth/v2/login', { email: email.trim().toLowerCase(), password })).data;
+      } catch (e: any) {
+        // The backend answers unknown emails / wrong passwords with 4xx + { success:false, message }.
+        res = e?.data && typeof e.data === 'object' ? e.data : { success: false, message: e?.message };
+        if (!e?.status || e.status >= 500) throw new Error('Could not reach i\'llTip. Check your connection and try again.');
+      }
       if (!res?.success || !res?.data) {
         const m = String(res?.message ?? '');
-        throw new Error(/invalid|incorrect|credential|password/i.test(m) ? 'Incorrect email or password.' : m || 'Login failed.');
+        throw new Error(/invalid|incorrect|credential|password|not found|userid/i.test(m) ? 'Incorrect email or password.' : m || 'Login failed.');
       }
       const s = sessionFromAuthResponse(res.data, email);
       saveSession(s);
