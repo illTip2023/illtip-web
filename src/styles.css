@@ -208,3 +208,12 @@ body, #root { overflow-x: clip; max-width: 100%; }
 .hp-media:not(.hp-carousel-wrap), .hp-media:not(.hp-carousel-wrap) video { touch-action: pan-y pinch-zoom; }
 video.hp-clickable { cursor: pointer; }
 .info-jobs-link { position: fixed; z-index: 2; right: 12px; bottom: 12px; background: #2d3e5f; color: #fff; padding: 8px 14px; border-radius: 999px; font: 600 13px/1 Poppins, system-ui, sans-serif; box-shadow: 0 4px 14px rgba(0,0,0,.2); }
+
+/* iPhone zooms the page in when a text box under 16px gets focus, which leaves the page loose and draggable
+   sideways (the "wobbly" create-post screen). 16px on phones stops the zoom. */
+@media (max-width: 900px) {
+  input, textarea, select, [contenteditable='true'] { font-size: 16px !important; }
+}
+/* A video with no thumbnail shows its first frame instead of a black box while it loads. */
+.hp-video { background: #111; }
+.autovideo-poster { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: contain; background: #000; cursor: pointer; }

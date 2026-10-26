@@ -25,6 +25,18 @@ export function AutoVideo({ src, poster, className, onTap }: { src: string; post
   const ref = useRef<HTMLVideoElement | null>(null);
   const [muted, setMuted] = useState(!soundOn);
   const userPaused = useRef(false);
+  // iPhones only decode a few videos at once and show the rest as black boxes: only videos near the screen get a
+  // source, and the thumbnail covers the video until it is actually playing.
+  const [near, setNear] = useState(false);
+  const [playing, setPlaying] = useState(false);
+  const wrap = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    const el = wrap.current;
+    if (!el) return;
+    const io = new IntersectionObserver((es) => es.forEach((e) => setNear(e.isIntersecting)), { rootMargin: '120% 0px 120% 0px' });
+    io.observe(el);
+    return () => io.disconnect();
+  }, []);
 
   useEffect(() => {
     const on = (v: boolean) => setMuted(!v);
@@ -63,6 +75,10 @@ export function AutoVideo({ src, poster, className, onTap }: { src: string; post
       userPaused.current = false;
       pauseOthers(v);
     };
+    const onPlaying = () => setPlaying(true);
+    const onStop = () => setPlaying(false);
+    v.addEventListener('playing', onPlaying);
+    v.addEventListener('emptied', onStop);
     const onPauseByUser = () => {
       // A pause while the video is still mostly visible = the user paused it; don't auto-resume.
       const r = v.getBoundingClientRect();
@@ -75,10 +91,12 @@ export function AutoVideo({ src, poster, className, onTap }: { src: string; post
       io.disconnect();
       v.removeEventListener('play', onPlay);
       v.removeEventListener('pause', onPauseByUser);
+      v.removeEventListener('playing', onPlaying);
+      v.removeEventListener('emptied', onStop);
       v.pause();
       players.delete(v);
     };
-  }, [src]);
+  }, [src, near]);
 
   function toggleSound(e: any) {
     e.preventDefault();
@@ -95,8 +113,22 @@ export function AutoVideo({ src, poster, className, onTap }: { src: string; post
   }
 
   return (
-    <div className="autovideo">
-      <video ref={ref} className={className + (onTap ? ' hp-clickable' : '')} src={src} poster={poster} muted={muted} playsInline loop preload="metadata" controls={!onTap} controlsList="nodownload noplaybackrate" disablePictureInPicture onClick={onTap} />
+    <div className="autovideo" ref={wrap}>
+      <video
+        ref={ref}
+        className={className + (onTap ? ' hp-clickable' : '')}
+        src={near ? (poster || src.includes('#') || !/\.(mp4|mov|m4v|webm)(\?|$)/i.test(src) ? src : src + '#t=0.1') : undefined}
+        poster={poster}
+        muted={muted}
+        playsInline
+        loop
+        preload="metadata"
+        controls={!onTap}
+        controlsList="nodownload noplaybackrate"
+        disablePictureInPicture
+        onClick={onTap}
+      />
+      {poster && !playing && onTap && <img className="autovideo-poster" src={poster} alt="" onClick={onTap} />}
       <button type="button" className="autovideo-sound" aria-label={muted ? 'Turn sound on' : 'Mute'} onClick={toggleSound}>
         {muted ? '🔇' : '🔊'}
       </button>
