@@ -1,5 +1,5 @@
 import React, { useEffect, useLayoutEffect, useRef, useState } from 'react';
-import { navigate } from '../../lib/router';
+import { href, navigate } from '../../lib/router';
 import { attachmentBaseName, attachmentKind, chatFileUrl, ChatMsg, decodeName, fetchAuthedBlobUrl, formatBytes, needsAuth } from './api';
 
 export function useMediaQuery(q: string) {
@@ -80,7 +80,7 @@ export function Linkified({ text }: { text: string }) {
           const sr = p.match(/serviceRequest\/(\d+)/i) || p.match(/serviceRequestId=(\d+)/i);
           if (sr) {
             return (
-              <a key={i} href={'#/jobs/' + sr[1]} onClick={(e) => (e.preventDefault(), navigate('/jobs/' + sr[1]))}>
+              <a key={i} href={href('/jobs/' + sr[1])} onClick={(e) => (e.preventDefault(), navigate('/jobs/' + sr[1]))}>
                 {p}
               </a>
             );

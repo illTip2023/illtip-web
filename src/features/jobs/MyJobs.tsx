@@ -214,7 +214,7 @@ export function MyJobDetailPage() {
       {!job ? (
         jobQ.error ? <ErrorBox error={jobQ.error} onRetry={jobQ.refetch} /> : <Spinner label="Loading job…" />
       ) : (
-        <div className="jb-detail">
+        <div className="jb-detail jb-detail-mine">
           <div className="jb-detail-main">
             <section className="jb-dcard">
               <div className="jb-dhead-top">

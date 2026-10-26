@@ -7,7 +7,7 @@ import { Link, navigate, useQueryParams } from '../../lib/router';
 import { invalidate, useQuery } from '../../lib/query';
 import { useAuth } from '../../lib/auth';
 import { ErrorBox, Icon, PageHeader, Spinner, toast } from '../../ui/kit';
-import { fmtDate, StatusPill, StoreButtons, SubNav, useReferralDashboard, useWalletQueries } from './shared';
+import { centerActive, fmtDate, StatusPill, StoreButtons, SubNav, useReferralDashboard, useWalletQueries } from './shared';
 import {
   bankDisplay,
   bankRegion,
@@ -54,6 +54,8 @@ export function WithdrawPage() {
   const initial = (qp.get('type') as Tab) || 'earned';
   const [tab, setTab] = useState<Tab>(TABS.some((t) => t.id === initial) ? initial : 'earned');
   const pendingRef = useRef<HTMLDivElement | null>(null);
+  const segRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => centerActive(segRef.current), [tab]);
   useEffect(() => {
     const t = qp.get('type') as Tab;
     if (t && TABS.some((x) => x.id === t)) setTab(t);
@@ -67,7 +69,7 @@ export function WithdrawPage() {
     <div className="wl-page">
       <PageHeader title="Withdraw" back="/wallet" sub="Cash out your earnings, coins and referral rewards" />
       <SubNav active="withdraw" />
-      <div className="wl-seg" role="tablist">
+      <div ref={segRef} className="wl-seg" role="tablist">
         {TABS.map((t) => (
           <button key={t.id} role="tab" aria-selected={tab === t.id} className={tab === t.id ? 'active' : ''} onClick={() => pick(t.id)}>
             {t.label}
@@ -428,7 +430,7 @@ function BankInfo() {
         </>
       ) : (
         <div className="wl-setup">
-          <b>Set up US bank payouts in the app</b>
+          <b>{current ? 'Change your US payout account in the app' : 'Set up US bank payouts in the app'}</b>
           <div className="small muted" style={{ margin: '4px 0 10px' }}>
             Direct-deposit setup (bank, identity and Stripe verification) is completed in the i'llTip app. Once it's done, your payout account shows here and you can withdraw from the web.
           </div>

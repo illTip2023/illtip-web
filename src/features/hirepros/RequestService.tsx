@@ -61,7 +61,7 @@ export function RequestServicePage() {
 function RequestForm({ onReset }: { onReset: () => void }) {
   const qp = useQueryParams();
   const services = useMasterServices();
-  const subs = useQuery('subscriptions:me', fetchSubscriptionStatus, { staleMs: 30_000 });
+  const subs = useQuery('hire:subscription-status', fetchSubscriptionStatus, { staleMs: 30_000 });
   const hasHire = hasAccess(subs.data, 'hire');
 
   const [serviceId, setServiceId] = useState<number | null>(qp.get('serviceId') ? Number(qp.get('serviceId')) : null);

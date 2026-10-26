@@ -113,7 +113,7 @@ export function JobListPage() {
   const [nearBusy, setNearBusy] = useState(false);
   const [near, setNear] = useState(nearCoords);
 
-  useEffect(() => setQInput(f.q), [f.q]);
+  useEffect(() => setQInput((cur) => (cur.trim() === f.q.trim() ? cur : f.q)), [f.q]);
   useEffect(() => setLocInput(f.address), [f.address]);
 
   // Debounced search (400ms, like the app)
@@ -303,6 +303,13 @@ export function JobListPage() {
           )}
           <div ref={sentinel} />
           {list.loading && list.items.length > 0 && <CardSkeleton count={2} />}
+          {!list.error && !list.loading && list.hasMore && list.items.length > 0 && (
+            <div className="center" style={{ padding: 12 }}>
+              <button className="btn btn-ghost btn-sm" onClick={() => list.loadMore()}>
+                Show more jobs
+              </button>
+            </div>
+          )}
           {list.error && list.items.length > 0 && (
             <div className="center" style={{ padding: 12 }}>
               <button className="btn btn-ghost btn-sm" onClick={() => list.loadMore()}>

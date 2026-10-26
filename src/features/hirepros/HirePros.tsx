@@ -61,7 +61,7 @@ export function HireProsPage() {
   const catId = qp.get('cat') ? Number(qp.get('cat')) : null;
   const q = qp.get('q') || '';
   const [input, setInput] = useState(q);
-  useEffect(() => setInput(q), [q]);
+  useEffect(() => setInput((cur) => (cur.trim() === q.trim() ? cur : q)), [q]);
 
   const setParams = (next: { cat?: number | null; q?: string }) => {
     const p = new URLSearchParams();

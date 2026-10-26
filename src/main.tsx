@@ -6,6 +6,7 @@ import { installLinkInterceptor, navigate, resolveRoute, RouteView, useLocation 
 import { ROUTES } from './routes';
 import { Shell } from './ui/Shell';
 import { Empty, Toaster } from './ui/kit';
+import { applyTheme, getThemePref } from './features/settings/theme';
 
 function NotFound() {
   return (
@@ -56,8 +57,14 @@ function App() {
     window.scrollTo(0, 0);
   }, [pathname]);
 
+  const onboarding = session && needsAuth ? (session.user.emailVerified === false ? '/verify-email?email=' + encodeURIComponent(session.user.email) : session.user.roleSelected === false ? '/role' : null) : null;
+  useEffect(() => {
+    if (onboarding) navigate(onboarding, { replace: true });
+  }, [onboarding]);
+
   if (legacy) return null;
   if (needsAuth && !session) return null;
+  if (onboarding) return null;
   if (!hit) return <Shell><NotFound /></Shell>;
   if (hit.route.chrome === false) return <RouteView route={hit.route} params={hit.params} />;
   return (
@@ -67,6 +74,7 @@ function App() {
   );
 }
 
+applyTheme(getThemePref());
 installLinkInterceptor();
 createRoot(document.getElementById('root')!).render(
   <React.StrictMode>

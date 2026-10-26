@@ -10,7 +10,7 @@ import React, { useCallback, useEffect, useLayoutEffect, useRef, useState } from
 import { api } from '../../lib/api';
 import { useAuth } from '../../lib/auth';
 import { APP_LINKS } from '../../lib/env';
-import { navigate } from '../../lib/router';
+import { href, navigate } from '../../lib/router';
 import { Icon, toast } from '../../ui/kit';
 import { BotAvatar, Ico, useMediaQuery } from './shared';
 
@@ -88,7 +88,7 @@ function Inline({ text }: { text: string }) {
           const jobId = jobIdFromHref(link[2]);
           if (jobId)
             return (
-              <a key={i} href={'#/jobs/' + jobId} onClick={(e) => (e.preventDefault(), navigate('/jobs/' + jobId))}>
+              <a key={i} href={href('/jobs/' + jobId)} onClick={(e) => (e.preventDefault(), navigate('/jobs/' + jobId))}>
                 {link[1]}
               </a>
             );
@@ -103,7 +103,7 @@ function Inline({ text }: { text: string }) {
         const sid = p.match(/^Service\s*ID\s*:\s*(\d+)$/i);
         if (sid)
           return (
-            <a key={i} href={'#/jobs/' + sid[1]} onClick={(e) => (e.preventDefault(), navigate('/jobs/' + sid[1]))}>
+            <a key={i} href={href('/jobs/' + sid[1])} onClick={(e) => (e.preventDefault(), navigate('/jobs/' + sid[1]))}>
               {p}
             </a>
           );

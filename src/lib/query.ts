@@ -101,6 +101,13 @@ export function useInfinite<T>(key: string | null, fetchPage: (page: number) => 
     setItems([]);
     setHasMore(true);
     load(firstPage, true);
+    const set = subs.get(key) || new Set();
+    const onInvalidate = () => load(firstPage, true);
+    set.add(onInvalidate);
+    subs.set(key, set);
+    return () => {
+      set.delete(onInvalidate);
+    };
   }, [key, load, firstPage]);
 
   return {

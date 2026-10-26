@@ -5,6 +5,8 @@ import { APP_LINKS, ENV_NAME } from '../lib/env';
 import { useAuth } from '../lib/auth';
 import { useQuery } from '../lib/query';
 import { api } from '../lib/api';
+import { acquireInboxSocket } from '../features/chat/socket';
+import { useEffect } from 'react';
 
 const TABS = [
   { to: '/', label: 'Home', icon: 'home', match: (p: string) => p === '/' || p.startsWith('/post') || p.startsWith('/search') },
@@ -17,7 +19,8 @@ const TABS = [
 function useNotifCount(enabled: boolean) {
   const q = useQuery(enabled ? 'notif:count' : null, async () => {
     const { data } = await api.get('/notification/v2/overlook');
-    return Number(data?.data?.count ?? data?.count ?? data?.data ?? 0) || 0;
+    const d = data?.data;
+    return Number((Array.isArray(d) ? d[0]?.count : d?.count) ?? data?.count ?? 0) || 0;
   }, { staleMs: 60_000 });
   return q.data || 0;
 }
@@ -26,6 +29,7 @@ export function Shell({ children, wide }: { children: React.ReactNode; wide?: bo
   const { pathname } = useLocation();
   const { user } = useAuth();
   const notif = useNotifCount(!!user);
+  useEffect(() => (user?.id ? acquireInboxSocket(user.id) : undefined), [user?.id]);
   const brand = (
     <Link to="/" className="brand">
       <img src="logo.png" alt="" />

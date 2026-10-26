@@ -51,7 +51,7 @@ export function WalletPage() {
               Withdraw
             </Link>
             <Link to="/wallet/transactions" className="btn wl-btn-glass">
-              Transaction History
+              Transactions
             </Link>
           </div>
         </div>

@@ -213,10 +213,11 @@ export async function fetchAiSuggestion(category: string, skillName: string, des
   const list = (v: unknown) => (Array.isArray(v) ? v.map((x) => String(x ?? '').trim()).filter(Boolean) : []);
   const req = list(picked.requirements);
   const resp = list(picked.responsibilities);
-  let text = about;
-  if (resp.length) text += '\n\nResponsibilities:\n' + resp.map((r) => '• ' + r).join('\n');
-  if (req.length) text += '\n\nRequirements:\n' + req.map((r) => '• ' + r).join('\n');
-  return text;
+  // formatAiSuggestionToDescription (src/utils/formatAiSuggestionText.ts)
+  const parts = [`About:\n${about}`];
+  if (req.length) parts.push(`Requirements:\n${req.map((r) => `• ${r}`).join('\n')}`);
+  if (resp.length) parts.push(`Responsibilities:\n${resp.map((r) => `• ${r}`).join('\n')}`);
+  return parts.join('\n\n');
 }
 
 // contact field (validation.ts isValidOptionalContact / normalizeContactField / normalizeOptionalUrlLike)

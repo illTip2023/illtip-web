@@ -14,7 +14,7 @@ It talks to the SAME backend as the app (illtip-backend; source at /home/claude/
 ## Helpers you must use
 - `src/lib/api.ts`: `api.get/post/put/patch/delete(path, body?, { params })` → `{ data, status }`; adds Bearer token + refresh on 401. `unwrap(res)` returns `res.data.data` for `{success,message,data}` responses (throws on success:false). Paths are relative to the backend root, e.g. `api.get('/service/v2/fetchServiceRequestList', { params: { page: 1 } })`. Use FormData for uploads (api handles it).
 - `src/lib/query.ts`: `useQuery(key, fn)`, `useInfinite(key, fetchPage)` (+ `useOnVisible(loadMore)` sentinel ref for infinite scroll), `invalidate(prefix)`, `setQueryData(key, fn)`.
-- `src/lib/router.tsx`: hash router. `Link`, `navigate(path)`, `goBack(fallback)`, `useParams()`, `useQueryParams()`. Route patterns like `/jobs/:id`.
+- `src/lib/router.tsx`: path router (History API, `href()` for raw anchors; old `#/` links still work). `Link`, `navigate(path)`, `goBack(fallback)`, `useParams()`, `useQueryParams()`. Route patterns like `/jobs/:id`.
 - `src/lib/auth.tsx`: `useAuth()` → `{ user, session, login, logout, updateUser }`. `user.id` is the logged-in userId.
 - `src/lib/images.ts`: `pickDisplayableImageUri(normalizeImageDetails(x))` to turn backend image objects into URLs.
 - `src/lib/env.ts`: `API_BASE_URL`, `CHAT_URL`, `APP_LINKS` (store links), `ENV_NAME`.

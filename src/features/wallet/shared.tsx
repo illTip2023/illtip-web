@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useRef } from 'react';
 import { useAuth } from '../../lib/auth';
 import { APP_LINKS } from '../../lib/env';
 import { useQuery } from '../../lib/query';
@@ -106,8 +106,10 @@ export function SubNav({ active }: { active: 'wallet' | 'transactions' | 'withdr
     { id: 'earnings', to: '/referral/earnings', label: 'Referral earnings' },
     { id: 'history', to: '/referral/history', label: 'Referral history' },
   ];
+  const ref = useRef<HTMLElement | null>(null);
+  useEffect(() => centerActive(ref.current), [active]);
   return (
-    <nav className="wl-subnav chips" aria-label="Wallet sections">
+    <nav ref={ref} className="wl-subnav chips" aria-label="Wallet sections">
       {items.map((i) => (
         <Link key={i.id} to={i.to} className={'chip' + (active === i.id ? ' active' : '')}>
           {i.label}
@@ -115,4 +117,11 @@ export function SubNav({ active }: { active: 'wallet' | 'transactions' | 'withdr
       ))}
     </nav>
   );
+}
+
+/** Scrolls a horizontal strip so its `.active` child is visible (without moving the page). */
+export function centerActive(strip: HTMLElement | null) {
+  const el = strip?.querySelector<HTMLElement>('.active');
+  if (!strip || !el || strip.scrollWidth <= strip.clientWidth) return;
+  strip.scrollLeft = Math.max(0, el.offsetLeft - strip.offsetLeft - (strip.clientWidth - el.offsetWidth) / 2);
 }
