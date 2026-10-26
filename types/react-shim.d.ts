@@ -27,6 +27,9 @@ declare module 'react' {
   export function createContext<T>(v: T): Context<T>;
   export function useReducer(...a: any[]): any;
   export function useId(): string;
+  export function useSyncExternalStore<T>(subscribe: (cb: () => void) => () => void, getSnapshot: () => T, getServerSnapshot?: () => T): T;
+  export function useTransition(): [boolean, (cb: () => void) => void];
+  export function useDeferredValue<T>(v: T): T;
   export const Fragment: any;
   export const StrictMode: any;
   export const Suspense: any;

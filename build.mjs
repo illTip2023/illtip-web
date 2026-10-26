@@ -1,5 +1,6 @@
 // Build: node build.mjs [--watch] [--prod]
 // Bundles src/main.tsx with esbuild into dist/ (app.js, app.css, index.html, static files from public/).
+// --base=/app/ serves the app under a sub-path (preview); default '/'.
 // --prod makes the LIVE backend the default (only after Bosun approves); otherwise the default is the DEV backend.
 // Locally, packages resolve from node_modules or NODE_PATH (e.g. /opt/npm-tools/node_modules).
 import { build, context } from 'esbuild';
@@ -8,12 +9,14 @@ import path from 'node:path';
 
 const watch = process.argv.includes('--watch');
 const prod = process.argv.includes('--prod');
+const baseArg = (process.argv.find((a) => a.startsWith('--base=')) || '--base=/').slice(7);
+const base = baseArg.endsWith('/') ? baseArg : baseArg + '/';
 const out = 'dist';
 fs.rmSync(out, { recursive: true, force: true });
 fs.mkdirSync(out, { recursive: true });
 for (const f of fs.readdirSync('public')) fs.copyFileSync(path.join('public', f), path.join(out, f));
 const stamp = Date.now().toString(36);
-fs.writeFileSync(path.join(out, 'index.html'), fs.readFileSync('index.html', 'utf8').replaceAll('__BUILD__', stamp));
+fs.writeFileSync(path.join(out, 'index.html'), fs.readFileSync('index.html', 'utf8').replaceAll('__BUILD__', stamp).replaceAll('__BASE__', base));
 
 const opts = {
   entryPoints: { app: 'src/main.tsx' },

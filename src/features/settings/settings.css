@@ -1,0 +1,77 @@
+/* Settings feature. Uses the global tokens from src/styles.css so light/dark both work. */
+.st { --st-soft: rgba(127, 127, 127, 0.08); }
+
+.st-account { display: flex; align-items: center; gap: 14px; padding: 18px; border-radius: 18px; color: #fff; background: linear-gradient(120deg, #2c4364 0%, #1f41bb 70%, #3f4ff5 100%); box-shadow: var(--shadow); flex-wrap: wrap; }
+.st-account .avatar { box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.35); }
+.st-account-name { font-size: 19px; font-weight: 800; }
+.st-account-email { font-size: 13.5px; opacity: 0.82; }
+.st-account-actions { display: flex; gap: 8px; }
+.st-account-actions .btn-ghost { color: #fff; border-color: rgba(255, 255, 255, 0.4); }
+.st-account-actions .btn:not(.btn-ghost) { background: #fff; color: var(--blue-2); }
+@media (max-width: 560px) { .st-account-actions { width: 100%; } .st-account-actions .btn { flex: 1; } }
+
+.st-grid { display: grid; grid-template-columns: 1fr; gap: 0 20px; }
+.st-h { font-size: 12.5px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--muted); font-weight: 700; margin: 22px 4px 8px; }
+.st-group { padding: 4px 0; overflow: hidden; }
+.st-row { display: flex; align-items: center; gap: 14px; width: 100%; padding: 12px 16px; background: none; border: none; text-align: left; color: var(--text); font: inherit; }
+a.st-row:hover, button.st-row:hover { background: var(--st-soft); }
+.st-row + .st-row, .st-faq + .st-faq { border-top: 1px solid var(--line); }
+.st-row-static { cursor: default; }
+.st-row-stack { align-items: flex-start; }
+.st-row-text { display: flex; flex-direction: column; min-width: 0; }
+.st-row-title { font-weight: 600; }
+.st-row-sub { font-size: 13px; color: var(--muted); }
+.st-ico { width: 38px; height: 38px; flex: none; border-radius: 11px; display: inline-flex; align-items: center; justify-content: center; background: rgba(63, 79, 245, 0.1); color: var(--blue); }
+.st-ico-danger { background: rgba(220, 38, 38, 0.1); color: var(--err); }
+.st-danger { color: var(--err); }
+.st-chev { color: var(--muted); flex: none; transition: transform 0.2s; }
+
+.st-theme { display: inline-flex; align-self: flex-start; flex-wrap: wrap; gap: 4px; padding: 4px; margin-top: 10px; border-radius: 12px; background: var(--st-soft); max-width: 100%; }
+.st-theme button { display: inline-flex; align-items: center; gap: 7px; padding: 7px 12px; border-radius: 9px; border: none; background: transparent; color: var(--muted); font-weight: 600; font-size: 13.5px; }
+.st-theme button.active { background: var(--card); color: var(--text); box-shadow: var(--shadow); }
+.st-theme-swatch { width: 14px; height: 14px; border-radius: 50%; border: 1px solid rgba(127, 127, 127, 0.45); }
+.st-theme-light { background: #fff; }
+.st-theme-dark { background: #111827; }
+.st-theme-system { background: linear-gradient(90deg, #fff 50%, #111827 50%); }
+
+.st-getapp { display: flex; align-items: center; gap: 12px; margin-top: 22px; flex-wrap: wrap; }
+.st-foot { text-align: center; color: var(--muted); font-size: 12.5px; margin: 26px 0 8px; }
+
+.st-steps { border: 1px solid var(--line); border-radius: 14px; padding: 12px 14px; background: var(--st-soft); }
+.st-steps-title { font-weight: 700; margin-bottom: 4px; }
+.st-steps ol { margin: 0; padding-left: 20px; line-height: 1.7; }
+
+/* help / faq / about */
+.st-hero { padding: 22px 20px; border-radius: 18px; color: #fff; background: linear-gradient(120deg, #2c4364, #1f41bb); margin-bottom: 14px; }
+.st-hero-title { font-size: 22px; font-weight: 800; }
+.st-hero-sub { opacity: 0.85; margin-top: 2px; }
+.st-help-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.st-help-grid .card + .card { margin-top: 0; }
+@media (max-width: 600px) { .st-help-grid { grid-template-columns: 1fr; } }
+.st-help-card { display: flex; gap: 12px; align-items: flex-start; }
+.st-help-title { font-weight: 700; margin-bottom: 2px; }
+.st-help-card a { font-weight: 600; word-break: break-word; }
+.st-faq-q .st-chev { transform: rotate(90deg); }
+.st-faq.open .st-chev { transform: rotate(-90deg); }
+.st-faq-a { padding: 0 16px 16px; color: var(--muted); line-height: 1.6; }
+.st-about { padding: 0; overflow: hidden; }
+.st-about-logo { display: flex; align-items: center; justify-content: center; gap: 12px; padding: 28px 16px; font-size: 26px; font-weight: 800; color: #fff; background: linear-gradient(120deg, #2c4364, #1f41bb); }
+.st-about-logo img { width: 52px; height: 52px; border-radius: 14px; }
+.st-about-sec { padding: 18px 20px; }
+.st-about-sec + .st-about-sec { border-top: 1px solid var(--line); }
+.st-about-sec h2 { font-size: 16px; margin-bottom: 6px; }
+.st-about-sec p { margin: 0; color: var(--muted); line-height: 1.65; }
+
+/* legal */
+.st-legal-tabs { margin-bottom: 12px; }
+.st-legal { padding: 24px 26px; line-height: 1.7; font-size: 14.5px; }
+.st-legal a { word-break: break-word; }
+.st-legal-logo { display: flex; justify-content: center; margin-bottom: 8px; }
+.st-legal-logo img { width: 64px; height: 64px; border-radius: 16px; }
+.st-legal-title { text-align: center; font-size: 20px; margin-bottom: 16px; }
+.st-legal-p { margin: 0 0 12px; }
+.st-legal-li { display: flex; gap: 8px; margin: 0 0 10px; }
+.st-legal-num { flex: none; font-weight: 600; min-width: 22px; }
+.st-legal-h { font-weight: 700; font-size: 15.5px; margin-top: 18px; }
+.st-legal-foot { text-align: center; color: var(--muted); font-size: 12px; }
+@media (max-width: 560px) { .st-legal { padding: 18px 16px; font-size: 14px; } }

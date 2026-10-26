@@ -1,25 +1,20 @@
 import React, { useState } from 'react';
 import type { RouteDef } from '../../lib/router';
-import { navigate, useQueryParams } from '../../lib/router';
+import { Link, navigate, useQueryParams } from '../../lib/router';
 import { useAuth } from '../../lib/auth';
-import { APP_LINKS } from '../../lib/env';
+import { AuthLayout, FormError, PasswordInput } from './AuthLayout';
+import { RegisterPage } from './RegisterPage';
+import { VerifyEmailPage } from './VerifyEmailPage';
+import { ForgotPasswordPage } from './ForgotPasswordPage';
+import { RoleFinishPage, RoleSelectPage } from './RolePages';
 
-export function AuthLayout({ children, title, sub }: { children: React.ReactNode; title?: string; sub?: string }) {
-  return (
-    <div className="auth-wrap">
-      <div className="auth-card">
-        <div className="auth-logo">
-          <img src="logo.png" alt="" /> i'llTip
-        </div>
-        {title && <h1 className="center" style={{ marginTop: 6 }}>{title}</h1>}
-        {sub && <p className="center muted" style={{ marginTop: 6 }}>{sub}</p>}
-        <div style={{ marginTop: 18 }}>{children}</div>
-        <p className="center muted tiny" style={{ marginTop: 18 }}>
-          Get the app: <a href={APP_LINKS.ios} target="_blank" rel="noreferrer">iPhone</a> · <a href={APP_LINKS.android} target="_blank" rel="noreferrer">Android</a>
-        </p>
-      </div>
-    </div>
-  );
+export { AuthLayout };
+
+/** Same order as the app's LoginScreen.routeAfterAuth: unverified → OTP, no role yet → role select, else into the app. */
+export function routeAfterAuth(user: { email: string; emailVerified?: boolean; roleSelected?: boolean }, next?: string | null) {
+  if (user.emailVerified !== true) navigate(`/verify-email?email=${encodeURIComponent(user.email)}&source=login`, { replace: true });
+  else if (user.roleSelected !== true) navigate('/role', { replace: true });
+  else navigate(next && next.startsWith('/') && !next.startsWith('/login') ? next : '/', { replace: true });
 }
 
 function LoginPage() {
@@ -27,20 +22,17 @@ function LoginPage() {
   const qp = useQueryParams();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [show, setShow] = useState(false);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState('');
   async function submit(e: React.FormEvent) {
     e.preventDefault();
     setErr('');
-    if (!email || !password) return setErr('Enter your email and password.');
-    if (!/^\S+@\S+\.\S+$/.test(email.trim())) return setErr('Enter a valid email address.');
+    if (!email || !password) return setErr('Email and password are required.');
+    if (!/^\S+@\S+\.\S+$/.test(email.trim())) return setErr('Please enter a valid email address.');
     setBusy(true);
     try {
       const s = await login(email, password);
-      if (s.user.emailVerified === false) navigate('/verify-email', { replace: true });
-      else if (s.user.roleSelected === false) navigate('/role', { replace: true });
-      else navigate(qp.get('next') || '/', { replace: true });
+      routeAfterAuth(s.user, qp.get('next'));
     } catch (e: any) {
       setErr(e?.message || 'Login failed.');
     } finally {
@@ -49,27 +41,36 @@ function LoginPage() {
   }
   return (
     <AuthLayout title="Welcome back" sub="Find work, get seen, get tipped.">
-      <form onSubmit={submit}>
+      <form onSubmit={submit} noValidate>
         <div className="field">
           <label className="label" htmlFor="email">Email</label>
-          <input id="email" className="input" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} />
+          <input id="email" className="input" type="email" autoComplete="email" placeholder="Your Email Address" value={email} onChange={(e) => setEmail(e.target.value)} />
         </div>
         <div className="field">
-          <label className="label" htmlFor="pw">Password</label>
-          <div className="row">
-            <input id="pw" className="input" type={show ? 'text' : 'password'} autoComplete="current-password" value={password} onChange={(e) => setPassword(e.target.value)} />
-            <button type="button" className="btn btn-ghost btn-sm" onClick={() => setShow((x) => !x)}>{show ? 'Hide' : 'Show'}</button>
+          <div className="row between">
+            <label className="label" htmlFor="pw">Password</label>
+            <Link to={'/forgot-password' + (email.includes('@') ? '?email=' + encodeURIComponent(email.trim().toLowerCase()) : '')} className="small">
+              Forgot password?
+            </Link>
           </div>
+          <PasswordInput id="pw" autoComplete="current-password" value={password} onChange={setPassword} />
         </div>
-        {err && <div className="small" style={{ color: 'var(--err)', marginBottom: 10 }}>{err}</div>}
-        <button className="btn btn-block" disabled={busy}>{busy ? 'Signing in…' : 'Log in'}</button>
+        <FormError msg={err} />
+        <button className="btn btn-block btn-dark au-cta" disabled={busy}>{busy ? 'Signing in…' : 'Log in'}</button>
       </form>
-      <div className="row between small" style={{ marginTop: 14 }}>
-        <a href="#/forgot-password">Forgot password?</a>
-        <a href="#/register">Create account</a>
-      </div>
+      <p className="center small" style={{ marginTop: 16 }}>
+        Not yet signed in? <Link to={'/register' + (qp.get('ref') ? '?ref=' + encodeURIComponent(qp.get('ref')!) : '')}>Register Now</Link>
+      </p>
     </AuthLayout>
   );
 }
 
-export const routes: RouteDef[] = [{ path: '/login', element: LoginPage, chrome: false }];
+/** Auth screens: all `chrome: false`, so they render without the app shell and without requiring a session. */
+export const routes: RouteDef[] = [
+  { path: '/login', element: LoginPage, chrome: false, auth: false },
+  { path: '/register', element: RegisterPage, chrome: false, auth: false },
+  { path: '/verify-email', element: VerifyEmailPage, chrome: false, auth: false },
+  { path: '/forgot-password', element: ForgotPasswordPage, chrome: false, auth: false },
+  { path: '/role', element: RoleSelectPage, chrome: false, auth: false },
+  { path: '/role/finish', element: RoleFinishPage, chrome: false, auth: false },
+];

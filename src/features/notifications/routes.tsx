@@ -1,15 +1,10 @@
-import React from 'react';
 import type { RouteDef } from '../../lib/router';
-import { Empty, PageHeader } from '../../ui/kit';
+import { NotificationsPage } from './NotificationsPage';
+import { NotificationSettingsPage } from './SettingsPage';
+import './notifications.css';
 
-function NotificationsPlaceholder() {
-  return (
-    <>
-      <PageHeader title="Notifications" />
-      <Empty title="Coming soon" />
-    </>
-  );
-}
-
-/** Routes owned by the notifications feature. auth: true = requires login; chrome: false = no app shell. */
-export const routes: RouteDef[] = [{ path: '/notifications', element: NotificationsPlaceholder, auth: true }];
+/** Routes owned by the notifications feature. auth: true = requires login. */
+export const routes: RouteDef[] = [
+  { path: '/notifications', element: NotificationsPage, auth: true },
+  { path: '/notifications/settings', element: NotificationSettingsPage, auth: true },
+];

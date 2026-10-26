@@ -1,19 +1,53 @@
 /**
- * Tiny hash router (works on any static host and under a sub-path such as jobs.illtip.com/app/).
+ * Tiny path router (History API). Works at the site root (www.illtip.com/...) and under a sub-path
+ * (jobs.illtip.com/app/...) via <base href>. Old "#/path" links are converted on load.
  * Routes are patterns like "/jobs/:id". Use <Link to="/jobs/1">, navigate('/x'), useParams(), useQueryParams().
  */
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
 
+/** Base path from <base href="/app/"> (no trailing slash), '' at the site root. */
+export const BASE = (() => {
+  try {
+    const p = new URL(document.baseURI).pathname.replace(/\/+$/, '');
+    return p === '/' ? '' : p;
+  } catch {
+    return '';
+  }
+})();
+
+export const href = (to: string) => BASE + (to.startsWith('/') ? to : '/' + to);
+
 function currentPath() {
-  const h = location.hash.replace(/^#/, '') || '/';
-  return h.startsWith('/') ? h : '/' + h;
+  let p = location.pathname;
+  if (BASE && p.startsWith(BASE)) p = p.slice(BASE.length);
+  if (!p.startsWith('/')) p = '/' + p;
+  return p + location.search;
 }
 
+// Convert legacy hash URLs (#/jobs/1) to real paths once at startup.
+if (typeof location !== 'undefined' && location.hash.startsWith('#/')) {
+  history.replaceState(null, '', href(location.hash.slice(1)));
+}
+
+// Preview host (GitHub Pages) sends deep links through its 404 page, which stores the path here.
+try {
+  const r = sessionStorage.getItem('illtip.redirect');
+  if (r) {
+    sessionStorage.removeItem('illtip.redirect');
+    history.replaceState(null, '', href(r));
+  }
+} catch {
+  /* storage unavailable */
+}
+
+const EVT = 'illtip:navigate';
+
 export function navigate(to: string, opts: { replace?: boolean } = {}) {
-  const url = '#' + (to.startsWith('/') ? to : '/' + to);
+  if (to.startsWith('#/')) to = to.slice(1);
+  const url = href(to);
   if (opts.replace) history.replaceState(null, '', url);
   else history.pushState(null, '', url);
-  window.dispatchEvent(new HashChangeEvent('hashchange'));
+  window.dispatchEvent(new Event(EVT));
 }
 
 export function goBack(fallback = '/') {
@@ -25,10 +59,10 @@ export function useLocation() {
   const [path, setPath] = useState(currentPath());
   useEffect(() => {
     const on = () => setPath(currentPath());
-    window.addEventListener('hashchange', on);
+    window.addEventListener(EVT, on);
     window.addEventListener('popstate', on);
     return () => {
-      window.removeEventListener('hashchange', on);
+      window.removeEventListener(EVT, on);
       window.removeEventListener('popstate', on);
     };
   }, []);
@@ -76,20 +110,40 @@ export function RouteView({ route, params }: { route: RouteDef; params: Record<s
   );
 }
 
-export function Link({ to, children, className, onClick, title }: { to: string; children: React.ReactNode; className?: string; onClick?: () => void; title?: string }) {
+export function Link({ to, children, className, onClick, title, style }: { to: string; children: React.ReactNode; className?: string; onClick?: (e?: any) => void; title?: string; style?: any }) {
+  const target = to.startsWith('#/') ? to.slice(1) : to;
   return (
     <a
-      href={'#' + to}
+      href={href(target)}
       className={className}
       title={title}
+      style={style}
       onClick={(e) => {
-        if (e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
+        onClick?.(e);
+        if (e.defaultPrevented || e.metaKey || e.ctrlKey || e.shiftKey || e.button !== 0) return;
         e.preventDefault();
-        onClick?.();
-        navigate(to);
+        navigate(target);
       }}
     >
       {children}
     </a>
   );
+}
+
+/** Intercept plain in-app <a href="#/x"> or same-origin <a href="/x"> clicks anywhere so they route without reloads. */
+export function installLinkInterceptor() {
+  document.addEventListener('click', (e) => {
+    const a = (e.target as HTMLElement)?.closest?.('a') as HTMLAnchorElement | null;
+    if (!a || e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || a.target === '_blank' || a.hasAttribute('download')) return;
+    const raw = a.getAttribute('href') || '';
+    if (raw.startsWith('#/')) {
+      e.preventDefault();
+      navigate(raw.slice(1));
+      return;
+    }
+    if (a.origin === location.origin && a.pathname.startsWith(BASE + '/') && !/\.[a-z0-9]{2,5}$/i.test(a.pathname)) {
+      e.preventDefault();
+      navigate(a.pathname.slice(BASE.length) + a.search);
+    }
+  });
 }

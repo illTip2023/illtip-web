@@ -1,15 +1,11 @@
-import React from 'react';
 import type { RouteDef } from '../../lib/router';
-import { Empty, PageHeader } from '../../ui/kit';
+import '../jobs/jobs.css';
+import './hirepros.css';
+import { HireProsPage } from './HirePros';
+import { RequestServicePage } from './RequestService';
 
-function HireprosPlaceholder() {
-  return (
-    <>
-      <PageHeader title="Hirepros" />
-      <Empty title="Coming soon" />
-    </>
-  );
-}
-
-/** Routes owned by the hirepros feature. auth: true = requires login; chrome: false = no app shell. */
-export const routes: RouteDef[] = [{ path: '/hire', element: HireprosPlaceholder, auth: true }];
+/** Routes owned by the hirepros feature. */
+export const routes: RouteDef[] = [
+  { path: '/hire', element: HireProsPage, auth: true },
+  { path: '/hire/request', element: RequestServicePage, auth: true },
+];
