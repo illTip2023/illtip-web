@@ -16,5 +16,6 @@ import { routes as profile } from './features/profile/routes';
 import { routes as notifications } from './features/notifications/routes';
 import { routes as wallet } from './features/wallet/routes';
 import { routes as settings } from './features/settings/routes';
+import { routes as plans } from './features/plans/routes';
 
-export const ROUTES: RouteDef[] = [{ path: '/information', element: InformationPage, auth: false, chrome: false }, ...auth, ...jobs, ...hirepros, ...chat, ...profile, ...notifications, ...wallet, ...settings, ...home];
+export const ROUTES: RouteDef[] = [{ path: '/information', element: InformationPage, auth: false, chrome: false }, ...auth, ...jobs, ...hirepros, ...chat, ...profile, ...notifications, ...wallet, ...settings, ...plans, ...home];

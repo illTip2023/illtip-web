@@ -1,7 +1,8 @@
 /** Shared UI for the Jobs and Hire Pros features. */
 import React, { useEffect, useRef, useState } from 'react';
 import { APP_LINKS } from '../../lib/env';
-import { Link } from '../../lib/router';
+import { Link, navigate, useLocation } from '../../lib/router';
+import { plansHref } from '../plans/api';
 import { Avatar, Icon, Modal, Spinner, timeAgo } from '../../ui/kit';
 import {
   appStatusLabel,
@@ -211,7 +212,21 @@ export function StoreButtons() {
   );
 }
 
-export function UpgradeModal({ open, onClose, title, message }: { open: boolean; onClose: () => void; title: string; message: string }) {
+/** Paywall: sends the user to /plans (Choose Your Plan) for the right catalog, then back here via ?next=. */
+export function UpgradeModal({
+  open,
+  onClose,
+  title,
+  message,
+  catalog = 'career',
+}: {
+  open: boolean;
+  onClose: () => void;
+  title: string;
+  message: string;
+  catalog?: 'career' | 'hire';
+}) {
+  const { full } = useLocation();
   return (
     <Modal open={open} onClose={onClose} title={title}>
       <div className="jb-upgrade">
@@ -219,14 +234,28 @@ export function UpgradeModal({ open, onClose, title, message }: { open: boolean;
           <JIcon name="bolt" size={26} />
         </div>
         <p className="jb-upgrade-msg">{message}</p>
-        <div className="jb-upgrade-cta">Upgrade in the i'llTip app</div>
-        <p className="small muted" style={{ margin: '0 0 14px' }}>
-          Plans and upgrades are managed in the i'llTip mobile app. Once you upgrade there, come back here and try again.
-        </p>
-        <StoreButtons />
+        <button
+          className="btn btn-block"
+          onClick={() => {
+            onClose();
+            navigate(plansHref({ catalog, next: full }));
+          }}
+        >
+          See plans
+        </button>
         <button className="btn btn-ghost btn-block" style={{ marginTop: 10 }} onClick={onClose}>
           Not now
         </button>
+        <p className="tiny muted" style={{ margin: '12px 0 0' }}>
+          Prefer the app?{' '}
+          <a href={APP_LINKS.ios} target="_blank" rel="noreferrer">
+            App Store
+          </a>{' '}
+          ·{' '}
+          <a href={APP_LINKS.android} target="_blank" rel="noreferrer">
+            Google Play
+          </a>
+        </p>
       </div>
     </Modal>
   );

@@ -1,8 +1,8 @@
 import React, { useMemo, useState } from 'react';
 import { Empty, ErrorBox, Icon, PageHeader, Spinner, compactNumber, toast } from '../../ui/kit';
-import { navigate, useQueryParams } from '../../lib/router';
+import { Link, navigate, useQueryParams } from '../../lib/router';
 import { useAuth } from '../../lib/auth';
-import { APP_LINKS } from '../../lib/env';
+import { plansHref } from '../plans/api';
 import { invalidate, useInfinite, useOnVisible, useQuery } from '../../lib/query';
 import { fetchFollowersPage, fetchFollowingPage, fetchNetworkState, fetchViewersPage, followUser, PAGE_SIZE, rowName, rowSkill, unfollowUser, type UserRow } from './api';
 import { ConfirmModal, SkeletonRows, UserListRow } from './components';
@@ -261,15 +261,13 @@ export function ViewersPage() {
               </div>
               <div className="grow">
                 <div style={{ fontWeight: 700 }}>+{compactNumber(total - count)} more people viewed your profile</div>
-                <div className="muted small">Upgrade your plan in the i'llTip app to see everyone who viewed you.</div>
+                <div className="muted small">Upgrade your plan to see everyone who viewed you.</div>
               </div>
               <div className="row-wrap">
-                <a className="btn btn-sm" href={APP_LINKS.ios} target="_blank" rel="noreferrer">
-                  App Store
-                </a>
-                <a className="btn btn-ghost btn-sm" href={APP_LINKS.android} target="_blank" rel="noreferrer">
-                  Google Play
-                </a>
+                {/* PaymentPlansScreen with initialPlanId 'career-access' in the app (ProfileViewersScreen goToUpgrade). */}
+                <Link className="btn btn-sm" to={plansHref({ plan: 'career-1m', next: '/profile/viewers' })}>
+                  See plans
+                </Link>
               </div>
             </div>
           ) : null

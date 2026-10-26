@@ -131,7 +131,7 @@ export function SettingsPage() {
   const name = p?.name || user?.name || 'User';
   const email = p?.email || user?.email || '';
   const [share, setShare] = useState(false);
-  const [appOnly, setAppOnly] = useState<null | 'subscription' | 'delete' | 'language'>(null);
+  const [appOnly, setAppOnly] = useState<null | 'delete' | 'language'>(null);
   const [confirmLogout, setConfirmLogout] = useState(false);
 
   const doLogout = () => {
@@ -191,7 +191,7 @@ export function SettingsPage() {
           <h2 className="st-h">Finance</h2>
           <div className="card st-group">
             <Row icon={<Glyph d={G.wallet} />} title="Wallet & Referrals" sub="Rewards, earnings, withdrawals and referral code" to="/wallet" />
-            <Row icon={<Glyph d={G.crown} />} title="Subscription" sub="View, upgrade, or change your current plan" onClick={() => setAppOnly('subscription')} />
+            <Row icon={<Glyph d={G.crown} />} title="Subscription" sub="View, upgrade, or change your current plan" to="/plans" />
           </div>
         </div>
 
@@ -222,7 +222,7 @@ export function SettingsPage() {
             </span>
             <div className="grow">
               <div style={{ fontWeight: 700 }}>Get the i'llTip app</div>
-              <div className="muted small">Payments, subscriptions, video posts and push notifications live in the app.</div>
+              <div className="muted small">Coin purchases, video posts and push notifications live in the app.</div>
             </div>
             <div className="row-wrap">
               <a className="btn btn-ghost btn-sm" href={APP_LINKS.ios} target="_blank" rel="noreferrer">
@@ -259,7 +259,7 @@ export function SettingsPage() {
       <Modal
         open={appOnly !== null}
         onClose={() => setAppOnly(null)}
-        title={appOnly === 'delete' ? 'Delete Account' : appOnly === 'subscription' ? 'Subscription' : 'Language'}
+        title={appOnly === 'delete' ? 'Delete Account' : 'Language'}
       >
         {appOnly === 'delete' && (
           <div className="stack">
@@ -278,12 +278,6 @@ export function SettingsPage() {
               We keep this in the app so we can confirm it's really you. Can't use the app? Email{' '}
               <a href="mailto:info@illtip.com?subject=Delete%20my%20i'llTip%20account">info@illtip.com</a> from your account email.
             </p>
-            <AppStoreButtons />
-          </div>
-        )}
-        {appOnly === 'subscription' && (
-          <div className="stack">
-            <p style={{ margin: 0 }}>Plans are bought and managed in the i'llTip app. Open Settings → Subscription there to view, upgrade, or change your current plan.</p>
             <AppStoreButtons />
           </div>
         )}

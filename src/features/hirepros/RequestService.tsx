@@ -641,7 +641,7 @@ function RequestForm({ onReset }: { onReset: () => void }) {
       </Modal>
 
       <ConfirmModal open={confirm} title="Post this job?" message="Are you sure you want to post this job?" busy={submitting} onCancel={() => setConfirm(false)} onConfirm={submit} />
-      <UpgradeModal open={!!gate} onClose={() => setGate(null)} title={gate?.title || ''} message={gate?.message || ''} />
+      <UpgradeModal open={!!gate} onClose={() => setGate(null)} title={gate?.title || ''} message={gate?.message || ''} catalog="hire" />
     </div>
   );
 }

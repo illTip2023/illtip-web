@@ -484,7 +484,7 @@ function ApplyPanel({ job, row, onApplied, refreshing }: { job: ReturnType<typeo
 
   const onApply = async () => {
     if (busy || applied || closed) return;
-    // Same paywall as the app: non-subscribers go to ChooseYourPlan (here: upgrade in the app).
+    // Same paywall as the app: non-subscribers go to ChooseYourPlan (/plans?catalog=career).
     setChecking(true);
     const status = await fetchSubscriptionStatus();
     setChecking(false);
@@ -791,7 +791,7 @@ function ApplyPanel({ job, row, onApplied, refreshing }: { job: ReturnType<typeo
       </Modal>
 
       <ResumeViewer open={!!viewer} onClose={() => setViewer(null)} name={user?.name || ''} resume={viewer} />
-      <UpgradeModal open={!!gate} onClose={() => setGate(null)} title={gate?.title || ''} message={gate?.message || ''} />
+      <UpgradeModal open={!!gate} onClose={() => setGate(null)} title={gate?.title || ''} message={gate?.message || ''} catalog="career" />
     </>
   );
 }

@@ -37,7 +37,7 @@ function legacyRedirect(pathname: string, search: string): string | null {
     '/help': '/settings/help', '/contactus': '/settings/help', '/notification': '/notifications', '/chat': '/chat', '/profile': '/profile',
     '/updateProfile': '/profile/edit', '/myWallet': '/wallet', '/contractor-wallet': '/wallet', '/rewardHistory': '/referral/history',
     '/withdrawal-request': '/wallet/withdraw', '/requestService': '/hire/request', '/serviceType': '/hire', '/employer': '/hire',
-    '/myFriends': '/profile/network', '/search': '/search', '/serviceRequestApplyed': '/jobs', '/subscription-plans': '/settings',
+    '/myFriends': '/profile/network', '/search': '/search', '/serviceRequestApplyed': '/jobs', '/subscription-plans': '/plans',
   };
   if (map[p] && map[p] !== p) return map[p];
   if (p.startsWith('/search/')) return '/search?q=' + encodeURIComponent(decodeURIComponent(p.slice(8)));
