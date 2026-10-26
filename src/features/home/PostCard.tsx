@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { AutoVideo } from '../../ui/AutoVideo';
 import { Link, navigate } from '../../lib/router';
 import { useAuth } from '../../lib/auth';
 import { APP_LINKS } from '../../lib/env';
@@ -138,9 +139,7 @@ function MediaView({ m, onOpen, cover }: { m: Media; onOpen?: () => void; cover?
   const [bad, setBad] = useState(false);
   if (m.kind === 'video') {
     return (
-      <video className="hp-video" src={m.url} poster={m.poster} controls preload="metadata" playsInline>
-        Your browser can't play this video.
-      </video>
+      <AutoVideo className="hp-video" src={m.url} poster={m.poster} />
     );
   }
   if (bad) return <div className="hp-media-missing muted small">Image unavailable</div>;

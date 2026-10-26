@@ -155,3 +155,8 @@ h2 { font-size: 17px; }
 .auth-card { width: 100%; max-width: 420px; background: var(--card); border-radius: 22px; padding: 26px 22px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.25); }
 .auth-logo { display: flex; align-items: center; justify-content: center; gap: 10px; font-weight: 800; font-size: 26px; margin-bottom: 6px; color: var(--text); }
 .auth-logo img { width: 44px; height: 44px; border-radius: 12px; }
+
+/* Autoplaying feed video */
+.autovideo { position: relative; }
+.autovideo-sound { position: absolute; right: 10px; top: 10px; width: 36px; height: 36px; border-radius: 50%; border: none; background: rgba(0, 0, 0, 0.55); color: #fff; font-size: 16px; display: flex; align-items: center; justify-content: center; z-index: 2; }
+.autovideo-sound:hover { background: rgba(0, 0, 0, 0.75); }
