@@ -9,6 +9,8 @@ import { ErrorBoundary } from './ui/ErrorBoundary';
 import { AppBanner } from './ui/AppBanner';
 import { Empty, Toaster } from './ui/kit';
 import { applyTheme, getThemePref } from './features/settings/theme';
+import { oldSharedLinkRedirect } from './features/legacy/LegacyPages';
+import { BASE } from './lib/router';
 
 function NotFound() {
   return (
@@ -22,13 +24,13 @@ function NotFound() {
 function legacyRedirect(pathname: string, search: string): string | null {
   const q = new URLSearchParams(search);
   const p = pathname.replace(/\/+$/, '') || '/';
+  if (p === '/privacyPolicy' && /trems|terms/i.test(q.get('privacyPolicy') || '')) return '/settings/terms';
   if (p === '/job-detail' && q.get('serviceRequestId')) return '/jobs/' + encodeURIComponent(q.get('serviceRequestId')!);
   if ((p === '/home-detail' || p === '/postAction') && q.get('postId')) return '/post/' + encodeURIComponent(q.get('postId')!);
   if ((p === '/profile-detail' || p === '/friendsProfile') && q.get('userId')) return '/u/' + encodeURIComponent(q.get('userId')!);
   // Normalise "start a chat with X" links from other features to the chat feature's /chat/new?u=&n=.
   if (p === '/chat' && q.get('to')) return '/chat/new?u=' + encodeURIComponent(q.get('to')!) + (q.get('name') ? '&n=' + encodeURIComponent(q.get('name')!) : '');
   if (p === '/chat/new' && q.get('userId') && !q.get('u')) return '/chat/new?u=' + encodeURIComponent(q.get('userId')!) + (q.get('name') ? '&n=' + encodeURIComponent(q.get('name')!) : '');
-  if (p === '/referral' && q.get('code')) return '/register?ref=' + encodeURIComponent(q.get('code')!);
   if (p === '/serviceRequest' && q.get('id')) return '/jobs/' + encodeURIComponent(q.get('id')!);
   if (p.startsWith('/serviceRequest/')) return '/jobs/' + p.split('/')[2];
   const map: Record<string, string> = {
@@ -80,9 +82,10 @@ function App() {
   return <Shell>{view}</Shell>;
 }
 
+const redirected = oldSharedLinkRedirect(location.pathname.slice(BASE.length) || '/', location.search);
 applyTheme(getThemePref());
 installLinkInterceptor();
-createRoot(document.getElementById('root')!).render(
+if (!redirected) createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
     <AuthProvider>
       <AppBanner />

@@ -193,3 +193,10 @@ h2 { font-size: 17px; }
 /* Profile tab shows the signed-in user's photo */
 .tab-avatar { display: inline-flex; border-radius: 50%; overflow: hidden; box-shadow: 0 0 0 2px currentColor; }
 .tab-avatar img, .tab-avatar > * { width: 24px; height: 24px; }
+
+/* Referral landing (old /referral?code= page) */
+.ref-landing { min-height: 100vh; display: flex; align-items: center; justify-content: center; padding: 24px 16px; background: var(--bg, #f6f8fb); }
+.ref-landing-card { max-width: 440px; width: 100%; text-align: center; padding: 28px 22px; display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+.ref-landing-card img { align-self: center; border-radius: 14px; }
+.ref-landing-card h1 { font-size: 22px; margin: 8px 0 0; }
+.ref-landing-code { font: 700 26px/1 ui-monospace, monospace; letter-spacing: 2px; padding: 14px; border: 2px dashed var(--blue, #3b4cca); border-radius: 12px; background: transparent; color: inherit; cursor: pointer; }

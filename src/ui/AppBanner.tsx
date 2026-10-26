@@ -30,7 +30,8 @@ export function AppBanner() {
       return false;
     }
   });
-  if (platform === 'other' || closed) return null;
+  // The referral page has its own store buttons (they carry the referral code), and /information is full-screen.
+  if (platform === 'other' || closed || /\/(referral|information)\/?$/.test(location.pathname)) return null;
   const close = () => {
     try {
       localStorage.setItem(KEY, String(Date.now()));
