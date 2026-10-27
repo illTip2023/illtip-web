@@ -1,11 +1,13 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Avatar, Empty, ErrorBox, Modal, Spinner, toast } from '../../ui/kit';
-import { Link } from '../../lib/router';
+import { Avatar, Empty, ErrorBox, Modal, PageHeader, Spinner, toast } from '../../ui/kit';
+import { Link, useQueryParams } from '../../lib/router';
+import { useAuth } from '../../lib/auth';
 import { invalidate, useInfinite, useOnVisible, useQuery } from '../../lib/query';
 import { bump, useVersion } from './bus';
 import {
   createRecommendation,
   errMsg,
+  fetchHasGiven,
   fetchRecommendationCounts,
   fetchRecommendations,
   fmtDate,
@@ -305,6 +307,43 @@ export function RecommendationsTab({ isOwn, userId, name, hasGiven, onRecommend 
         )}
       </div>
       <RecommendationModal open={!!editing} onClose={() => setEditing(null)} recipientName={editing ? rowName(editing.otherUser || {}) : ''} editing={editing} />
+    </div>
+  );
+}
+
+/**
+ * /profile/recommendations[?userId=&name=] : the only recommendations entry point (the "Recommendations" stat on a profile).
+ * Own → received / given lists (app RecommendationsScreen). Someone else → their approved recommendations + "Recommend"
+ * (app AddRecommendationScreen, which also knows whether you already recommended them).
+ */
+export function RecommendationsPage() {
+  const qp = useQueryParams();
+  const { user } = useAuth();
+  const userId = qp.get('userId') || user?.id || '';
+  const isOwn = !!user?.id && String(userId) === String(user.id);
+  const name = qp.get('name') || (isOwn ? user?.name || 'You' : 'User');
+  const [open, setOpen] = useState(false);
+  const hasGivenQ = useQuery(!isOwn && userId ? `recs:hasGiven:${userId}` : null, () => fetchHasGiven(userId));
+  return (
+    <div>
+      <PageHeader title="Recommendations" back={isOwn ? '/profile' : `/u/${encodeURIComponent(userId)}`} sub={isOwn ? undefined : name} />
+      {userId ? (
+        <RecommendationsTab isOwn={isOwn} userId={userId} name={name} hasGiven={hasGivenQ.data?.hasGiven} onRecommend={() => setOpen(true)} />
+      ) : (
+        <Spinner />
+      )}
+      {!isOwn && userId && (
+        <RecommendationModal
+          open={open}
+          onClose={() => {
+            setOpen(false);
+            invalidate(`recs:hasGiven:${userId}`);
+            invalidate(`recs:approvedCount:${userId}`);
+          }}
+          recipientUserId={userId}
+          recipientName={name}
+        />
+      )}
     </div>
   );
 }
