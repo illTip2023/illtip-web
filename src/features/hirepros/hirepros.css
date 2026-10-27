@@ -40,7 +40,7 @@
 .hr-app { position: relative; background: var(--hr-sheet-bg); border-radius: 22px; overflow: hidden; box-shadow: var(--shadow); min-height: calc(100vh - 120px); display: flex; flex-direction: column; }
 
 /* Navy header with the faded grid (MatIcon) */
-.hr-head { position: relative; background: var(--hr-head-bg); color: var(--hr-head-ink); padding: 26px 0 46px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25); }
+.hr-head { position: relative; background: var(--hr-head-bg); color: var(--hr-head-ink); padding: 26px 0 36px; box-shadow: 0 2px 5px rgba(0, 0, 0, 0.25); }
 .hr-head::before { content: ''; position: absolute; inset: 0 0 0 32%; pointer-events: none; background-image: linear-gradient(rgba(255, 255, 255, 0.2) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.2) 1px, transparent 1px); background-size: 50px 50px; background-position: -1px -1px; -webkit-mask-image: linear-gradient(#000 30%, transparent 80%); mask-image: linear-gradient(#000 30%, transparent 80%); }
 .hr-head > * { position: relative; }
 .hr-titlerow { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 0 20px; margin-bottom: 10px; min-height: 44px; }
@@ -137,6 +137,8 @@
 }
 @media (min-width: 861px) {
   .hr-head { padding-top: 30px; }
+  /* No swipe on desktop: let the category tabs wrap instead of scrolling sideways */
+  .hr-tabs { flex-wrap: wrap; gap: 10px 12px; }
 }
 /* Phones: edge to edge like the app; the global top bar is hidden on /hire (Shell) */
 @media (max-width: 860px) {
