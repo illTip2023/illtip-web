@@ -687,7 +687,8 @@ export function PostCard({ post, detail, onDeleted, onCommentClick }: { post: Po
 
   if (patch.deleted) return null;
 
-  const open = detail ? undefined : () => navigate(`/post/${id}`);
+  // Like the app's Home (openHomeFeedViewer): tapping a photo opens the full-screen viewer you can swipe through.
+  const open = detail ? undefined : () => openWatch(post);
 
   const toggleLike = async () => {
     if (likeBusy) return;
