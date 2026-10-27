@@ -127,9 +127,9 @@ export function SearchScreen() {
       {tab === 'people' && (
         <>
           {peopleRows.length > 0 && (
-            <div className="hp-people">
+            <div className="hs-people">
               {peopleRows.map((u) => (
-                <Link key={u.userId} to={`/u/${encodeURIComponent(u.userId)}`} className="hp-person">
+                <Link key={u.userId} to={`/u/${encodeURIComponent(u.userId)}`} className="hs-person">
                   <Avatar src={u.avatar} name={u.name} size={46} />
                   <div className="grow">
                     <div className="row" style={{ gap: 6 }}>

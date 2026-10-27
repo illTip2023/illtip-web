@@ -43,7 +43,17 @@ export function Shell({ children, wide }: { children: React.ReactNode; wide?: bo
         {brand}
         <nav className="nav">
           {TABS.map((t) => (
-            <Link key={t.to} to={t.to} className={t.match(pathname) ? 'active' : ''}>
+            <Link
+              key={t.to}
+              to={t.to}
+              className={t.match(pathname) ? 'active' : ''}
+              onClick={(e) => {
+                if (pathname === t.to) {
+                  e?.preventDefault();
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                }
+              }}
+            >
               <Icon name={t.icon} /> {t.label}
             </Link>
           ))}
@@ -87,7 +97,18 @@ export function Shell({ children, wide }: { children: React.ReactNode; wide?: bo
       </main>
       <nav className="tabbar">
         {TABS.map((t) => (
-          <Link key={t.to} to={t.to} className={t.match(pathname) ? 'active' : ''}>
+          <Link
+            key={t.to}
+            to={t.to}
+            className={t.match(pathname) ? 'active' : ''}
+            onClick={(e) => {
+              // Tapping the tab you're already on scrolls back to the top (like the app).
+              if (pathname === t.to) {
+                e?.preventDefault();
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+              }
+            }}
+          >
             <span className="tab-pill">
               {t.icon === 'user' && user?.imageUrl ? <span className="tab-avatar"><Avatar src={user.imageUrl} name={user.name} size={24} /></span> : <Icon name={t.icon} />}
             </span>

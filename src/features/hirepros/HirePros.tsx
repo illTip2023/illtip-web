@@ -98,34 +98,34 @@ export function HireProsPage() {
 
   return (
     <div className="jb-wide jb-page">
-      <header className="hp-hero">
-        <div className="hp-hero-text">
+      <header className="hr-hero">
+        <div className="hr-hero-text">
           <h1>Hire Pros</h1>
           <p>Find and recruit top freelancers for any service — hiring has never been this straightforward.</p>
           <div className="row-wrap" style={{ marginTop: 14 }}>
-            <Link to={'/hire/request' + (cat ? `?serviceId=${cat.serviceId}` : '')} className="btn hp-hero-cta">
+            <Link to={'/hire/request' + (cat ? `?serviceId=${cat.serviceId}` : '')} className="btn hr-hero-cta">
               <JIcon name="plus" size={17} /> Request a Service
             </Link>
-            <Link to="/jobs/mine" className="btn hp-hero-ghost">
+            <Link to="/jobs/mine" className="btn hr-hero-ghost">
               Service Request History
             </Link>
           </div>
         </div>
-        <div className="hp-hero-art" aria-hidden>
-          <div className="hp-bubble b1">
+        <div className="hr-hero-art" aria-hidden>
+          <div className="hr-bubble b1">
             <JIcon name="users" size={22} />
           </div>
-          <div className="hp-bubble b2">
+          <div className="hr-bubble b2">
             <JIcon name="briefcase" size={22} />
           </div>
-          <div className="hp-bubble b3">
+          <div className="hr-bubble b3">
             <JIcon name="star" size={22} />
           </div>
         </div>
       </header>
 
       <form
-        className="jb-searchbar hp-search"
+        className="jb-searchbar hr-search"
         role="search"
         onSubmit={(e) => {
           e.preventDefault();
@@ -158,17 +158,17 @@ export function HireProsPage() {
       </div>
 
       {skillMatches.length > 0 && (
-        <section className="hp-section">
-          <div className="hp-section-head">
+        <section className="hr-section">
+          <div className="hr-section-head">
             <h2>Post job using</h2>
             <span className="small muted">Matching services</span>
           </div>
-          <div className="hp-skill-grid">
+          <div className="hr-skill-grid">
             {skillMatches.map((s) => (
-              <Link key={s.serviceId + ':' + s.skillId} to={`/hire/request?serviceId=${s.serviceId}&skillId=${s.skillId}`} className="hp-skill">
+              <Link key={s.serviceId + ':' + s.skillId} to={`/hire/request?serviceId=${s.serviceId}&skillId=${s.skillId}`} className="hr-skill">
                 <JobThumb src={s.imageUrl} title={s.skill} size={44} />
                 <div style={{ minWidth: 0 }}>
-                  <div className="hp-skill-name ellipsis">{s.skill}</div>
+                  <div className="hr-skill-name ellipsis">{s.skill}</div>
                   <div className="tiny muted ellipsis">{s.service}</div>
                 </div>
               </Link>
@@ -178,16 +178,16 @@ export function HireProsPage() {
       )}
 
       {cat && !q && skills.length > 0 && (
-        <section className="hp-section">
-          <div className="hp-section-head">
+        <section className="hr-section">
+          <div className="hr-section-head">
             <h2>Request a service in {cat.service}</h2>
             <span className="small muted">Pick a skill to post a job</span>
           </div>
-          <div className="hp-tile-grid">
+          <div className="hr-tile-grid">
             {skills.map((k) => (
-              <Link key={k.skillId} to={`/hire/request?serviceId=${cat.serviceId}&skillId=${k.skillId}`} className="hp-tile">
+              <Link key={k.skillId} to={`/hire/request?serviceId=${cat.serviceId}&skillId=${k.skillId}`} className="hr-tile">
                 <JobThumb src={k.imageUrl} title={k.skill} size={64} />
-                <span className="hp-tile-name">{k.skill}</span>
+                <span className="hr-tile-name">{k.skill}</span>
               </Link>
             ))}
           </div>
@@ -195,15 +195,15 @@ export function HireProsPage() {
       )}
 
       {!cat && !q && cats.length > 0 && (
-        <section className="hp-section">
-          <div className="hp-section-head">
+        <section className="hr-section">
+          <div className="hr-section-head">
             <h2>Browse by service</h2>
           </div>
-          <div className="hp-tile-grid">
+          <div className="hr-tile-grid">
             {cats.map((c) => (
-              <button key={c.serviceId} className="hp-tile" onClick={() => setParams({ cat: c.serviceId })}>
+              <button key={c.serviceId} className="hr-tile" onClick={() => setParams({ cat: c.serviceId })}>
                 <JobThumb src={c.imageUrl} title={c.service} size={64} />
-                <span className="hp-tile-name">{c.service}</span>
+                <span className="hr-tile-name">{c.service}</span>
                 <span className="tiny muted">{c.skills.length} skills</span>
               </button>
             ))}
@@ -211,16 +211,16 @@ export function HireProsPage() {
         </section>
       )}
 
-      <section className="hp-section">
-        <div className="hp-section-head">
+      <section className="hr-section">
+        <div className="hr-section-head">
           <h2>{term ? `Professionals for “${term}”` : 'Professionals'}</h2>
         </div>
         {people.error && people.items.length === 0 ? (
           <ErrorBox error={{ message: 'Could not load professionals.' }} onRetry={people.reload} />
         ) : people.loading && people.items.length === 0 ? (
-          <div className="hp-people">
+          <div className="hr-people">
             {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="hp-person jb-skel">
+              <div key={i} className="hr-person jb-skel">
                 <div className="jb-shimmer" style={{ width: 64, height: 64, borderRadius: '50%' }} />
                 <div className="jb-shimmer" style={{ height: 12, width: '70%', borderRadius: 6, marginTop: 12 }} />
                 <div className="jb-shimmer" style={{ height: 10, width: '50%', borderRadius: 6, marginTop: 8 }} />
@@ -239,16 +239,16 @@ export function HireProsPage() {
             </Link>
           </div>
         ) : (
-          <div className="hp-people">
+          <div className="hr-people">
             {people.items.map((p) => (
-              <Link key={p.userId} to={`/u/${encodeURIComponent(p.userId)}`} className="hp-person">
+              <Link key={p.userId} to={`/u/${encodeURIComponent(p.userId)}`} className="hr-person">
                 <Avatar src={p.avatar} name={p.name} size={64} />
-                <div className="hp-person-name">
+                <div className="hr-person-name">
                   <span className="ellipsis">{p.name}</span>
                   {p.verified && <VerifiedBadge />}
                 </div>
-                <div className="tiny muted hp-person-svc">{p.service || 'i’llTip member'}</div>
-                <span className="hp-person-cta">View profile</span>
+                <div className="tiny muted hr-person-svc">{p.service || 'i’llTip member'}</div>
+                <span className="hr-person-cta">View profile</span>
               </Link>
             ))}
           </div>

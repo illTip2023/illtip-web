@@ -223,3 +223,19 @@ video.hp-clickable { cursor: pointer; }
 .autovideo-poster.ready { animation: none; background: #000; }
 /* Always-visible store button in the phone top bar (App Store on iPhone, Google Play on Android) */
 .topbar-getapp { background: #fff; color: var(--navy, #2c4364); font-weight: 700; font-size: 13px; padding: 6px 12px; border-radius: 999px; margin-right: 4px; white-space: nowrap; text-decoration: none; }
+
+/* Post actions: phones keep a "hover" after a tap, which turned the liked heart black with a grey box.
+   Hover styling only on real mouse devices, and liked/saved colours always win. */
+@media (hover: none) {
+  button.hp-act:hover { background: none; color: var(--muted); }
+}
+button.hp-act.liked, button.hp-act.liked:hover { color: var(--hp-like, #e0245e); }
+button.hp-act.saved, button.hp-act.saved:hover { color: var(--blue); }
+button.hp-act:focus:not(:focus-visible) { outline: none; }
+
+/* Search → Users: a plain list like the app (own class names; Hire Pros uses .hp-people as a card grid) */
+.hs-people { background: var(--card); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+.hs-person { display: flex; align-items: center; gap: 12px; padding: 12px 14px; color: var(--text); text-decoration: none; }
+.hs-person + .hs-person { border-top: 1px solid var(--line); }
+@media (hover: hover) { .hs-person:hover { background: var(--hp-soft, rgba(0,0,0,.04)); } }
+.hs-person .hp-chev { transform: rotate(180deg); color: var(--muted); display: inline-flex; }

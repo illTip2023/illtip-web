@@ -276,8 +276,8 @@ function RequestForm({ onReset }: { onReset: () => void }) {
 
   if (done) {
     return (
-      <div className="jb-page hp-form-page">
-        <div className="jb-dcard hp-done">
+      <div className="jb-page hr-form-page">
+        <div className="jb-dcard hr-done">
           <div className="jb-success-icon">
             <JIcon name="check" size={30} />
           </div>
@@ -299,19 +299,19 @@ function RequestForm({ onReset }: { onReset: () => void }) {
   const err = (k: keyof typeof missing) => tried && missing[k];
 
   return (
-    <div className="jb-page hp-form-page">
+    <div className="jb-page hr-form-page">
       <div className="jb-backbar">
         <button className="jb-back" onClick={() => goBack('/hire')}>
           <JIcon name="back" size={18} /> Back
         </button>
       </div>
-      <header className="hp-form-head">
+      <header className="hr-form-head">
         <h1>Request a Service</h1>
         <p className="muted">Describe the job and the pros who match will be able to apply.</p>
       </header>
 
       <form
-        className="hp-form"
+        className="hr-form"
         noValidate
         onSubmit={(e) => {
           e.preventDefault();
@@ -320,12 +320,12 @@ function RequestForm({ onReset }: { onReset: () => void }) {
       >
         <section className="jb-dcard">
           <h2 className="jb-sec-title">Service</h2>
-          <div className="hp-grid-2">
+          <div className="hr-grid-2">
             <div className="field">
-              <label className="label" htmlFor="hp-svc">
+              <label className="label" htmlFor="hr-svc">
                 Service category
               </label>
-              <select id="hp-svc" className="select" value={serviceId ?? ''} onChange={(e) => (setServiceId(e.target.value ? Number(e.target.value) : null), setSkillId(null))}>
+              <select id="hr-svc" className="select" value={serviceId ?? ''} onChange={(e) => (setServiceId(e.target.value ? Number(e.target.value) : null), setSkillId(null))}>
                 <option value="">{services.loading ? 'Loading…' : 'Select a service'}</option>
                 {cats.map((c) => (
                   <option key={c.serviceId} value={c.serviceId}>
@@ -335,10 +335,10 @@ function RequestForm({ onReset }: { onReset: () => void }) {
               </select>
             </div>
             <div className="field">
-              <label className="label" htmlFor="hp-skill">
+              <label className="label" htmlFor="hr-skill">
                 Skill
               </label>
-              <select id="hp-skill" className="select" value={skillId ?? ''} disabled={!svc} onChange={(e) => setSkillId(e.target.value ? Number(e.target.value) : null)}>
+              <select id="hr-skill" className="select" value={skillId ?? ''} disabled={!svc} onChange={(e) => setSkillId(e.target.value ? Number(e.target.value) : null)}>
                 <option value="">{svc ? 'Select a skill' : 'Select a service first'}</option>
                 {svc?.skills.map((k) => (
                   <option key={k.skillId} value={k.skillId}>
@@ -349,7 +349,7 @@ function RequestForm({ onReset }: { onReset: () => void }) {
             </div>
           </div>
           {svc && (
-            <div className="hp-chosen">
+            <div className="hr-chosen">
               <JobThumb src={skill?.imageUrl || svc.imageUrl} title={skillName || categoryName} size={40} />
               <div className="small">
                 <b>{skillName || 'Any skill'}</b>
@@ -362,27 +362,27 @@ function RequestForm({ onReset }: { onReset: () => void }) {
         <section className="jb-dcard">
           <h2 className="jb-sec-title">Job Details</h2>
           <div className="field">
-            <label className="label" htmlFor="hp-title">
+            <label className="label" htmlFor="hr-title">
               Job title <Req />
             </label>
-            <input id="hp-title" className={'input' + (err('title') ? ' jb-invalid' : '')} placeholder="Enter company and service name here..." value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} />
+            <input id="hr-title" className={'input' + (err('title') ? ' jb-invalid' : '')} placeholder="Enter company and service name here..." value={title} onChange={(e) => setTitle(e.target.value)} maxLength={120} />
           </div>
 
-          <div className="hp-grid-2">
+          <div className="hr-grid-2">
             <div className="field">
-              <label className="label" htmlFor="hp-date">
+              <label className="label" htmlFor="hr-date">
                 Deadline <Req />
               </label>
-              <input id="hp-date" type="datetime-local" className={'input' + (err('date') ? ' jb-invalid' : '')} min={minDate} value={date} onChange={(e) => setDate(e.target.value)} aria-describedby="hp-date-hint" />
-              <div id="hp-date-hint" className="tiny muted" style={{ marginTop: 4 }}>
+              <input id="hr-date" type="datetime-local" className={'input' + (err('date') ? ' jb-invalid' : '')} min={minDate} value={date} onChange={(e) => setDate(e.target.value)} aria-describedby="hr-date-hint" />
+              <div id="hr-date-hint" className="tiny muted" style={{ marginTop: 4 }}>
                 Enter the deadline date for your job...
               </div>
             </div>
             <div className="field">
-              <label className="label" htmlFor="hp-mode">
+              <label className="label" htmlFor="hr-mode">
                 Work Mode
               </label>
-              <select id="hp-mode" className="select" value={workMode} onChange={(e) => setWorkMode(e.target.value as any)}>
+              <select id="hr-mode" className="select" value={workMode} onChange={(e) => setWorkMode(e.target.value as any)}>
                 <option value="remote">Remote</option>
                 <option value="onsite">On-site</option>
                 <option value="hybrid">Hybrid</option>
@@ -394,20 +394,20 @@ function RequestForm({ onReset }: { onReset: () => void }) {
             <span className="label">
               Pay range <Req />
             </span>
-            <div className="hp-pay">
-              <select className="select hp-cur" aria-label="Currency" value={currency.code} onChange={(e) => setCurrency(CURRENCIES.find((c) => c.code === e.target.value) || CURRENCIES[1])}>
+            <div className="hr-pay">
+              <select className="select hr-cur" aria-label="Currency" value={currency.code} onChange={(e) => setCurrency(CURRENCIES.find((c) => c.code === e.target.value) || CURRENCIES[1])}>
                 {CURRENCIES.map((c) => (
                   <option key={c.code} value={c.code}>
                     {c.symbol} {c.code}
                   </option>
                 ))}
               </select>
-              <div className="hp-money">
+              <div className="hr-money">
                 <span>{currency.symbol}</span>
                 <input className={'input' + (err('pay') ? ' jb-invalid' : '')} inputMode="numeric" placeholder="Min" aria-label="Minimum pay" value={payMin} onChange={(e) => setPayMin(e.target.value.replace(/[^0-9]/g, ''))} />
               </div>
               <span className="muted">–</span>
-              <div className="hp-money">
+              <div className="hr-money">
                 <span>{currency.symbol}</span>
                 <input className="input" inputMode="numeric" placeholder="Max" aria-label="Maximum pay" value={payMax} onChange={(e) => setPayMax(e.target.value.replace(/[^0-9]/g, ''))} />
               </div>
@@ -415,11 +415,11 @@ function RequestForm({ onReset }: { onReset: () => void }) {
           </div>
 
           <div className="field">
-            <label className="label" htmlFor="hp-addr">
+            <label className="label" htmlFor="hr-addr">
               Location <Req />
             </label>
             <PlaceInput
-              id="hp-addr"
+              id="hr-addr"
               value={addrText}
               invalid={err('address')}
               placeholder="Enter location here..."
@@ -433,13 +433,13 @@ function RequestForm({ onReset }: { onReset: () => void }) {
 
           <div className="field">
             <div className="row between" style={{ marginBottom: 6 }}>
-              <label className="label" htmlFor="hp-desc" style={{ margin: 0 }}>
+              <label className="label" htmlFor="hr-desc" style={{ margin: 0 }}>
                 Description
               </label>
               <span className="tiny muted">{description.length} chars</span>
             </div>
-            <textarea id="hp-desc" className="textarea hp-desc" placeholder="Service Description..." value={description} onChange={(e) => setDescription(e.target.value)} />
-            <button type="button" className="hp-ai-btn" onClick={openAi} disabled={aiLoading && !aiOpen}>
+            <textarea id="hr-desc" className="textarea hr-desc" placeholder="Service Description..." value={description} onChange={(e) => setDescription(e.target.value)} />
+            <button type="button" className="hr-ai-btn" onClick={openAi} disabled={aiLoading && !aiOpen}>
               <JIcon name="sparkle" size={18} /> Ask AI to help write service description
             </button>
           </div>
@@ -447,9 +447,9 @@ function RequestForm({ onReset }: { onReset: () => void }) {
 
         <section className="jb-dcard">
           <h2 className="jb-sec-title">Preferences</h2>
-          <Switch id="hp-cert" checked={certified} onChange={setCertified} label="Certified or License required?" />
-          <Switch id="hp-radius" checked={radius} onChange={setRadius} label="Limit request to 30 mile radius" />
-          <Switch id="hp-urgent" checked={urgent} onChange={setUrgent} label="High priority service" />
+          <Switch id="hr-cert" checked={certified} onChange={setCertified} label="Certified or License required?" />
+          <Switch id="hr-radius" checked={radius} onChange={setRadius} label="Limit request to 30 mile radius" />
+          <Switch id="hr-urgent" checked={urgent} onChange={setUrgent} label="High priority service" />
         </section>
 
         <section className="jb-dcard">
@@ -467,7 +467,7 @@ function RequestForm({ onReset }: { onReset: () => void }) {
             }}
           />
           {preview ? (
-            <div className="hp-photo">
+            <div className="hr-photo">
               <img src={preview} alt="Job" />
               <div className="row" style={{ gap: 8 }}>
                 <button type="button" className="btn btn-ghost btn-sm" onClick={() => fileRef.current?.click()}>
@@ -479,38 +479,38 @@ function RequestForm({ onReset }: { onReset: () => void }) {
               </div>
             </div>
           ) : (
-            <button type="button" className="hp-drop" onClick={() => fileRef.current?.click()}>
+            <button type="button" className="hr-drop" onClick={() => fileRef.current?.click()}>
               <JIcon name="image" size={24} />
               <span>Attach your images...</span>
               <span className="tiny muted">Optional — we’ll use the skill image if you skip this.</span>
             </button>
           )}
 
-          <div className="hp-grid-2" style={{ marginTop: 14 }}>
+          <div className="hr-grid-2" style={{ marginTop: 14 }}>
             <div className="field">
-              <label className="label" htmlFor="hp-link">
+              <label className="label" htmlFor="hr-link">
                 Website
               </label>
-              <input id="hp-link" className="input" type="url" placeholder="Link your website... (optional)" value={link} onChange={(e) => setLink(e.target.value)} />
+              <input id="hr-link" className="input" type="url" placeholder="Link your website... (optional)" value={link} onChange={(e) => setLink(e.target.value)} />
             </div>
             <div className="field">
-              <label className="label" htmlFor="hp-contact">
+              <label className="label" htmlFor="hr-contact">
                 Contact
               </label>
-              <input id="hp-contact" className={'input' + (tried && contactError(contact) ? ' jb-invalid' : '')} placeholder="Contact email or phone number (optional)" value={contact} onChange={(e) => setContact(e.target.value)} autoCapitalize="none" />
+              <input id="hr-contact" className={'input' + (tried && contactError(contact) ? ' jb-invalid' : '')} placeholder="Contact email or phone number (optional)" value={contact} onChange={(e) => setContact(e.target.value)} autoCapitalize="none" />
             </div>
           </div>
 
           <div className="field">
             <div className="row between">
-              <label className="label" htmlFor="hp-tag">
+              <label className="label" htmlFor="hr-tag">
                 Hashtags
               </label>
-              <span className={'tiny ' + (tags.length >= 5 ? 'hp-max' : 'muted')}>{tags.length}/5</span>
+              <span className={'tiny ' + (tags.length >= 5 ? 'hr-max' : 'muted')}>{tags.length}/5</span>
             </div>
-            <div className="hp-add-row">
+            <div className="hr-add-row">
               <input
-                id="hp-tag"
+                id="hr-tag"
                 className="input"
                 placeholder="Add up to 5 hashtags to your post..."
                 value={tagInput}
@@ -530,7 +530,7 @@ function RequestForm({ onReset }: { onReset: () => void }) {
             {tags.length > 0 && (
               <div className="row-wrap" style={{ marginTop: 8 }}>
                 {tags.map((t) => (
-                  <button type="button" key={t} className="jb-tag hp-removable" onClick={() => setTags(tags.filter((x) => x !== t))} aria-label={`Remove #${t}`}>
+                  <button type="button" key={t} className="jb-tag hr-removable" onClick={() => setTags(tags.filter((x) => x !== t))} aria-label={`Remove #${t}`}>
                     #{t} <JIcon name="close" size={12} />
                   </button>
                 ))}
@@ -541,14 +541,14 @@ function RequestForm({ onReset }: { onReset: () => void }) {
           {hasHire && (
             <div className="field">
               <div className="row between">
-                <label className="label" htmlFor="hp-q">
+                <label className="label" htmlFor="hr-q">
                   Screening Questions
                 </label>
                 <span className="tiny muted">{questions.length}/5</span>
               </div>
-              <div className="hp-add-row">
+              <div className="hr-add-row">
                 <input
-                  id="hp-q"
+                  id="hr-q"
                   className="input"
                   placeholder="Ask applicants a question before they apply"
                   value={qInput}
@@ -566,7 +566,7 @@ function RequestForm({ onReset }: { onReset: () => void }) {
                 </button>
               </div>
               {questions.map((q, i) => (
-                <div key={i} className="hp-question">
+                <div key={i} className="hr-question">
                   <span className="grow small">
                     {i + 1}. {q.text}
                   </span>
@@ -579,8 +579,8 @@ function RequestForm({ onReset }: { onReset: () => void }) {
           )}
         </section>
 
-        <div className="hp-submit-bar">
-          <button type="submit" className="btn btn-block hp-submit" disabled={validating || submitting}>
+        <div className="hr-submit-bar">
+          <button type="submit" className="btn btn-block hr-submit" disabled={validating || submitting}>
             {validating ? 'Checking…' : 'Request Service'}
           </button>
         </div>
@@ -599,7 +599,7 @@ function RequestForm({ onReset }: { onReset: () => void }) {
             <div className="tiny muted" style={{ marginBottom: 8 }}>
               Suggestion {aiIdx + 1} of {MAX_AI}
             </div>
-            <div className="hp-ai-doc">
+            <div className="hr-ai-doc">
               <h3 className="jb-sub-title">About:</h3>
               <p className="pre jb-prose">{aiList[aiIdx].about}</p>
               {aiList[aiIdx].requirements.length > 0 && (
@@ -648,7 +648,7 @@ function RequestForm({ onReset }: { onReset: () => void }) {
 
 function Req() {
   return (
-    <span className="hp-req" aria-label="required">
+    <span className="hr-req" aria-label="required">
       *
     </span>
   );
