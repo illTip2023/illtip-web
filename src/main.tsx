@@ -41,6 +41,11 @@ function legacyRedirect(pathname: string, search: string): string | null {
     '/updateProfile': '/profile/edit', '/myWallet': '/wallet', '/contractor-wallet': '/wallet', '/rewardHistory': '/referral/history',
     '/withdrawal-request': '/wallet/withdraw', '/requestService': '/hire/request', '/serviceType': '/hire', '/employer': '/hire',
     '/myFriends': '/profile/network', '/search': '/search', '/serviceRequestApplyed': '/jobs', '/subscription-plans': '/plans',
+    // More old Angular pages, linked from older emails (welcome email: /serviceAccept) and notifications.
+    '/serviceAccept': '/jobs', '/contractor': '/jobs', '/serviceDetails': '/jobs', '/notiServiceDetails': '/jobs', '/notiServiceDetailsApplied': '/jobs',
+    '/chatBox': '/chat', '/addPost': '/', '/addTextPost': '/', '/checkout': '/plans', '/cancel': '/plans', '/successPayment': '/wallet',
+    '/payment-status': '/wallet', '/createStripeAccount': '/wallet', '/payoutNG': '/wallet/withdraw', '/paystackPayout': '/wallet/withdraw',
+    '/reviewList': '/profile', '/review': '/profile', '/tickets': '/settings/help',
   };
   if (map[p] && map[p] !== p) return map[p];
   if (p.startsWith('/search/')) return '/search?q=' + encodeURIComponent(decodeURIComponent(p.slice(8)));
