@@ -29,7 +29,7 @@ import {
 import { PollCard, RichText, copyText } from './PostCard';
 import { ComboTipButton } from './ComboTip';
 import { loadSaved, patchPost, setSaved, usePostPatch, useSavedIds } from './store';
-import { ViewerComments } from './ViewerComments';
+import { CommentSheet } from './CommentSheet';
 import { takeWatchFeedSeed } from './ViewerOpen';
 import './viewer.css';
 
@@ -436,7 +436,7 @@ function Watch({ id }: { id: string }) {
             </div>
           )}
 
-          {commentsFor && <ViewerComments post={commentsFor} onClose={() => setCommentsFor(null)} />}
+          {commentsFor && <CommentSheet post={commentsFor} showCaption onClose={() => setCommentsFor(null)} />}
         </div>
 
         {start && (

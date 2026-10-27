@@ -48,7 +48,7 @@ export function getComboLabel(count: number): string {
 
 let balanceLoading: Promise<void> | null = null;
 /** Warm the shared balance once (app: useCoinBalanceController().ensureLoaded, deduped by key). */
-function ensureBalanceLoaded(force = false): Promise<void> {
+export function ensureBalanceLoaded(force = false): Promise<void> {
   if (!force && coinStore.get() !== undefined) return Promise.resolve();
   if (balanceLoading) return balanceLoading;
   balanceLoading = fetchCoinBalance()
@@ -69,13 +69,13 @@ function unwrapCoin(payload: any): any {
   }
   return payload;
 }
-function balanceFrom(payload: any): number | undefined {
+export function balanceFrom(payload: any): number | undefined {
   const d = unwrapCoin(payload);
   const n = Number(d?.coinBalance ?? d?.balance);
   return d != null && Number.isFinite(n) ? n : undefined;
 }
 /** app: isInsufficientCoinBalanceError. */
-function isInsufficient(e: any): boolean {
+export function isInsufficient(e: any): boolean {
   const payload = unwrapCoin(e?.data);
   const message = String(e?.data?.message ?? payload?.message ?? e?.message ?? '').toLowerCase();
   const balance = Number(payload?.coinBalance ?? payload?.balance);

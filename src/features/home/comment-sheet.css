@@ -1,0 +1,139 @@
+/* App-style comments sheet + comment rows (illtip-mobile PostCommentSheet.tsx styles). */
+:root {
+  --cs-accent: #3e50b5;
+  --cs-faint: #9ca3af;
+  --cs-sep: #f3f4f6;
+  --cs-handle: #d1d5db;
+  --cs-input: #f3f4f6;
+  --cs-like: #ef4444;
+  --cs-gold: #f5b400;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --cs-accent: #4a6cf7;
+    --cs-sep: rgba(255, 255, 255, 0.08);
+    --cs-handle: #4b5563;
+    --cs-input: #2a2a32;
+  }
+}
+:root[data-theme='dark'] {
+  --cs-accent: #4a6cf7;
+  --cs-sep: rgba(255, 255, 255, 0.08);
+  --cs-handle: #4b5563;
+  --cs-input: #2a2a32;
+}
+
+/* ---------- sheet ---------- */
+.cs-backdrop { position: fixed; inset: 0; z-index: 60; background: rgba(0, 0, 0, 0.4); touch-action: none; animation: cs-fade 0.2s ease; }
+.cs-backdrop.closing { opacity: 0; transition: opacity 0.2s ease; }
+.cs-sheet {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 61;
+  height: 62vh; height: 62dvh; max-height: calc(100dvh - env(safe-area-inset-top) - 16px);
+  display: flex; flex-direction: column; min-width: 0;
+  background: var(--card); color: var(--text);
+  border-radius: 18px 18px 0 0; box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.18);
+  animation: cs-up 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
+  transition: height 0.22s ease, translate 0.2s ease;
+  overflow: hidden;
+}
+.cs-sheet.expanded { height: 92vh; height: 92dvh; }
+.cs-sheet.closing { translate: 0 100%; transition: translate 0.2s ease-in; }
+.cs-sheet.kb { border-radius: 18px 18px 0 0; transition: none; }
+@keyframes cs-up { from { translate: 0 100%; } to { translate: 0 0; } }
+@keyframes cs-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.cs-head { position: relative; flex: none; padding: 8px 44px 8px; border-bottom: 1px solid var(--cs-sep); touch-action: none; cursor: grab; user-select: none; -webkit-user-select: none; }
+.cs-grab { display: block; width: 38px; height: 4px; padding: 0; margin: 0 auto 8px; border: 0; border-radius: 2px; background: var(--cs-handle); cursor: grab; }
+.cs-grab::before { content: ''; display: block; margin: -10px -20px; height: 24px; } /* bigger hit area */
+.cs-title { margin: 0; text-align: center; font-size: 16px; font-weight: 700; line-height: 1.3; color: var(--text); }
+.cs-close { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; display: none; align-items: center; justify-content: center; border: 0; border-radius: 50%; background: transparent; color: var(--muted); cursor: pointer; }
+.cs-close:hover { background: var(--cs-input); }
+@media (hover: hover) and (pointer: fine) { .cs-close { display: flex; } }
+
+.cs-scroll { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; -webkit-overflow-scrolling: touch; padding: 12px 16px; }
+.cs-loading { padding: 8px 0; }
+.cs-empty { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-height: 100%; padding: 24px; }
+.cs-empty-title { font-size: 18px; font-weight: 700; margin-bottom: 4px; color: var(--text); }
+.cs-empty-body { font-size: 14px; color: var(--muted); }
+.cs-empty-small { font-size: 13px; text-align: center; color: var(--muted); margin-top: 8px; }
+
+.cs-caption { padding-bottom: 14px; margin-bottom: 14px; border-bottom: 1px solid var(--cs-sep); min-width: 0; }
+.cs-caption-author { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; color: inherit; text-decoration: none; min-width: 0; }
+.cs-caption-text { font-size: 14px; line-height: 20px; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+
+/* ---------- rows (sheet + /post/:id) ---------- */
+.cs-list { display: flex; flex-direction: column; gap: 14px; min-width: 0; }
+.cs-item { min-width: 0; }
+.cs-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 10px; align-items: start; min-width: 0; }
+.cs-reply { margin-top: 14px; }
+.cs-av { display: block; line-height: 0; text-decoration: none; }
+.cs-body { min-width: 0; }
+.cs-meta { display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 8px; min-width: 0; font-size: 13px; line-height: 18px; }
+.cs-name { font-weight: 700; color: var(--text); text-decoration: none; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.cs-time { color: var(--cs-faint); font-size: 12px; white-space: nowrap; }
+.cs-text { margin-top: 2px; font-size: 14px; line-height: 19px; color: var(--text); white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; }
+.cs-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin-top: 6px; }
+.cs-actions button { background: none; border: 0; padding: 2px 0; font-size: 12px; font-weight: 600; line-height: 1.2; color: var(--cs-faint); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.cs-actions button:disabled { opacity: 0.6; }
+.cs-actions .cs-del { color: var(--cs-like); }
+.cs-side { display: flex; flex-direction: column; align-items: center; gap: 10px; padding-top: 4px; min-width: 28px; }
+.cs-side-btn { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 0; border: 0; background: none; color: var(--muted); cursor: pointer; line-height: 1; -webkit-tap-highlight-color: transparent; }
+.cs-side-btn:disabled { cursor: default; }
+.cs-like.liked { color: var(--cs-like); }
+.cs-count { font-size: 11px; font-weight: 600; text-align: center; }
+.cs-coin .cs-count { color: var(--cs-gold); }
+.cs-coin > span:first-child { display: inline-flex; }
+.cs-pop { animation: cs-pop 0.35s cubic-bezier(0.3, 1.6, 0.5, 1); }
+@keyframes cs-pop { 0% { transform: scale(1); } 45% { transform: scale(1.45); } 100% { transform: scale(1); } }
+
+.cs-thread { display: flex; align-items: center; gap: 12px; margin: 12px 0 0 44px; padding: 2px 0; border: 0; background: none; font-size: 12.5px; font-weight: 600; color: var(--muted); cursor: pointer; text-align: left; }
+.cs-thread-line { display: inline-block; width: 24px; height: 1px; background: var(--muted); opacity: 0.5; flex: none; }
+.cs-replies { margin: 2px 0 0 44px; min-width: 0; }
+
+.cs-edit { display: flex; align-items: center; gap: 6px; margin-top: 4px; min-width: 0; }
+.cs-edit-input { flex: 1; min-width: 0; min-height: 36px; padding: 0 10px; border: 1px solid var(--line); border-radius: 8px; background: var(--card); color: var(--text); font-size: 16px; }
+.cs-edit-save, .cs-edit-cancel { flex: none; border: 0; border-radius: 8px; padding: 8px 10px; font-size: 12px; font-weight: 600; cursor: pointer; }
+.cs-edit-save { background: var(--cs-accent); color: #fff; }
+.cs-edit-save:disabled { opacity: 0.6; }
+.cs-edit-cancel { background: var(--cs-input); color: var(--text); }
+
+/* ---------- composer ---------- */
+.cs-compose-wrap { flex: none; min-width: 0; background: var(--card); }
+.cs-emojis { display: flex; justify-content: space-around; align-items: center; padding: 8px 10px; border-top: 1px solid var(--cs-sep); }
+.cs-emoji { width: 36px; height: 36px; padding: 0; border: 0; border-radius: 50%; background: none; font-size: 24px; line-height: 1; cursor: pointer; display: flex; align-items: center; justify-content: center; -webkit-tap-highlight-color: transparent; font-family: 'Apple Color Emoji', 'Segoe UI Emoji', 'Noto Color Emoji', sans-serif; }
+.cs-emoji:active { transform: scale(0.88); }
+@media (hover: hover) { .cs-emoji:hover { background: var(--cs-input); } }
+@media (max-width: 340px) { .cs-emoji { width: 32px; height: 32px; font-size: 21px; } .cs-emojis { padding: 8px 4px; } }
+.cs-replying { display: flex; align-items: center; justify-content: space-between; gap: 8px; min-width: 0; padding: 8px 16px; border-top: 1px solid var(--cs-sep); background: var(--cs-input); font-size: 13px; color: var(--muted); }
+.cs-replying b { color: var(--text); }
+.cs-x { flex: none; display: flex; align-items: center; justify-content: center; width: 26px; height: 26px; border: 0; border-radius: 50%; background: none; color: var(--muted); cursor: pointer; }
+.cs-compose-wrap .hp-mentions { margin: 6px 12px 4px 54px; max-height: 180px; }
+.cs-compose { display: flex; align-items: flex-end; gap: 8px; min-width: 0; padding: 8px 12px calc(8px + env(safe-area-inset-bottom)); border-top: 1px solid var(--cs-sep); }
+.cs-sheet.kb .cs-compose { padding-bottom: 8px; }
+.cs-compose > .avatar { flex: none; margin-bottom: 2px; }
+.cs-input { flex: 1; min-width: 0; min-height: 38px; max-height: 110px; padding: 8px 14px; border: 0; border-radius: 19px; background: var(--cs-input); color: var(--text); font: inherit; font-size: 16px; line-height: 22px; resize: none; outline: none; overflow-y: auto; }
+.cs-input::placeholder { color: var(--cs-faint); }
+.cs-input:focus { box-shadow: 0 0 0 2px color-mix(in srgb, var(--cs-accent) 35%, transparent); }
+.cs-post { flex: none; min-height: 36px; min-width: 60px; padding: 0 14px; margin-bottom: 1px; border: 0; border-radius: 18px; background: var(--cs-accent); color: #fff; font-size: 14px; font-weight: 700; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.cs-post:disabled { opacity: 0.6; cursor: default; }
+.cs-spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.45); border-top-color: #fff; animation: spin 0.8s linear infinite; }
+
+/* ---------- desktop: centred sheet ---------- */
+@media (min-width: 760px) and (min-height: 560px) {
+  .cs-sheet { left: 50%; right: auto; top: 50%; bottom: auto; width: min(560px, calc(100vw - 48px)); height: min(680px, 84vh); max-height: none; border-radius: 18px; transform: translate(-50%, -50%); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.3); animation: cs-pop-in 0.2s ease; }
+  .cs-sheet.expanded { height: min(860px, 92vh); }
+  .cs-sheet.closing { translate: none; opacity: 0; transition: opacity 0.18s ease; }
+  .cs-compose { padding-bottom: 10px; }
+  @keyframes cs-pop-in { from { opacity: 0; translate: 0 24px; } to { opacity: 1; translate: 0 0; } }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .cs-sheet, .cs-backdrop, .cs-pop { animation: none; transition: none; }
+}
+
+/* ---------- inline list on /post/:id ---------- */
+.hp-comments .cs-compose-wrap { margin-top: 14px; background: transparent; }
+.hp-comments .cs-emojis { padding: 8px 0; }
+.hp-comments .cs-compose { padding: 8px 0 0; }
+.hp-comments .cs-replying { padding: 8px 12px; border-radius: 10px; border-top: 0; margin-top: 6px; }
+.hp-comments .cs-compose-wrap .hp-mentions { margin: 6px 0 4px 42px; }

@@ -6,8 +6,12 @@ import { fetchBrowse, PAGE_SIZE, personFromRaw, searchPeople, searchPosts, type 
 import { PostCard, PostSkeleton } from './PostCard';
 import { PostTile } from './PostTile';
 import { loadSaved } from './store';
+import { useAuth } from '../../lib/auth';
+import { CardSkeleton, JobCard } from '../jobs/components';
+import { fetchJobsPage, useMasterServices, useSavedJobIds, type Job, type JobFilters } from '../jobs/lib';
 
-type Tab = 'people' | 'posts';
+type Tab = 'people' | 'posts' | 'jobs';
+const PLACEHOLDER: Record<Tab, string> = { people: 'Search people…', posts: 'Search posts or #hashtags', jobs: 'Search jobs…' };
 const PEOPLE_SERVER_PAGE = 100; // /user/people returns pageSize x 10 rows per page
 
 function dedupePosts(list: Post[]) {
@@ -26,7 +30,9 @@ export function SearchScreen() {
   const urlTab = qp.get('tab');
   const [query, setQuery] = useState(urlQ);
   const [debounced, setDebounced] = useState(urlQ.trim());
-  const [tab, setTab] = useState<Tab>(urlTab === 'posts' || urlQ.trim().startsWith('#') ? 'posts' : 'people');
+  const [tab, setTab] = useState<Tab>(urlTab === 'jobs' ? 'jobs' : urlTab === 'posts' || urlQ.trim().startsWith('#') ? 'posts' : 'people');
+  const [jobCat, setJobCat] = useState<number | null>(null);
+  const { user } = useAuth();
   const written = useRef<string | null>(null);
 
   useEffect(() => {
@@ -40,6 +46,9 @@ export function SearchScreen() {
     setDebounced(urlQ.trim());
     if (urlQ.trim().startsWith('#')) setTab('posts');
   }, [urlQ]);
+  useEffect(() => {
+    if (urlTab === 'jobs' || urlTab === 'posts') setTab(urlTab);
+  }, [urlTab]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(query.trim()), 350);
@@ -49,7 +58,7 @@ export function SearchScreen() {
   useEffect(() => {
     const sp = new URLSearchParams();
     if (debounced) sp.set('q', debounced);
-    if (tab === 'posts') sp.set('tab', 'posts');
+    if (tab !== 'people') sp.set('tab', tab);
     written.current = debounced;
     const s = sp.toString();
     navigate('/search' + (s ? '?' + s : ''), { replace: true });
@@ -89,7 +98,16 @@ export function SearchScreen() {
   const browsePosts = useMemo(() => dedupePosts(browse.items), [browse.items]);
   const resultPosts = useMemo(() => dedupePosts(results.items), [results.items]);
 
-  const active = tab === 'people' ? people : searching ? results : browse;
+  /* jobs: GET /service/v2/fetchOtherServiceRequestList (app HomeSearchScreen Jobs tab → fetchOtherServiceRequests),
+     same fetch + card as the Jobs page; the query goes to the server's `search` like the Jobs page. */
+  const services = useMasterServices();
+  const savedJobs = useSavedJobIds();
+  const jobFilters: JobFilters = { q: debounced, serviceId: jobCat, status: 'all', workMode: 'all', datePosted: 'allJobs', address: '', near: null };
+  const jobs = useInfinite<Job>(tab === 'jobs' && !services.loading ? `home:jobs:${user?.id}:${debounced}:${debounced ? '' : jobCat ?? ''}` : null, (p) =>
+    fetchJobsPage(jobFilters, p, user?.id, services.data),
+  );
+
+  const active = tab === 'people' ? people : tab === 'jobs' ? jobs : searching ? results : browse;
   const sentinel = useOnVisible(() => !active.error && active.loadMore());
 
   return (
@@ -101,11 +119,12 @@ export function SearchScreen() {
           autoFocus
           className="hp-search-input"
           type="search"
-          placeholder={tab === 'people' ? 'Search people by name or profession' : 'Search posts or #hashtags'}
+          placeholder={PLACEHOLDER[tab]}
+          aria-label={PLACEHOLDER[tab].replace('…', '')}
           value={query}
           onChange={(e) => {
             setQuery(e.target.value);
-            if (e.target.value.trim().startsWith('#')) setTab('posts');
+            if (tab !== 'jobs' && e.target.value.trim().startsWith('#')) setTab('posts');
           }}
         />
         {query && (
@@ -122,7 +141,39 @@ export function SearchScreen() {
         <button className={tab === 'posts' ? 'active' : ''} onClick={() => setTab('posts')}>
           Posts
         </button>
+        <button className={tab === 'jobs' ? 'active' : ''} onClick={() => setTab('jobs')}>
+          Jobs
+        </button>
       </div>
+
+      {tab === 'jobs' && (
+        <>
+          {(services.data || []).length > 0 && (
+            <div className="chips jb-cats hs-job-cats" role="tablist" aria-label="Categories">
+              <button role="tab" aria-selected={jobCat == null} className={'chip' + (jobCat == null ? ' active' : '')} onClick={() => setJobCat(null)}>
+                All
+              </button>
+              {(services.data || []).map((c) => (
+                <button key={c.serviceId} role="tab" aria-selected={jobCat === c.serviceId} className={'chip' + (jobCat === c.serviceId ? ' active' : '')} onClick={() => setJobCat(c.serviceId)}>
+                  {c.service}
+                </button>
+              ))}
+            </div>
+          )}
+          {(jobs.loading || services.loading) && !jobs.items.length ? (
+            <CardSkeleton count={4} />
+          ) : (
+            jobs.items.length > 0 && (
+              <div className="jb-list hs-jobs">
+                {jobs.items.map((j) => (
+                  <JobCard key={j.id} job={j} saved={savedJobs.has(j.id)} onToggleSave={() => savedJobs.toggle(j)} />
+                ))}
+              </div>
+            )
+          )}
+          {!jobs.loading && !services.loading && !jobs.error && !jobs.items.length && <Empty title="No jobs found">{debounced ? `No jobs match "${debounced}".` : 'Try a different search or category.'}</Empty>}
+        </>
+      )}
 
       {tab === 'people' && (
         <>
@@ -180,7 +231,7 @@ export function SearchScreen() {
 
       {active.error && <ErrorBox error={active.error} onRetry={active.items.length ? active.loadMore : active.reload} />}
       <div ref={sentinel} style={{ height: 1 }} />
-      {active.loading && !(tab === 'posts' && searching && !resultPosts.length) && (
+      {active.loading && !(tab === 'posts' && searching && !resultPosts.length) && !(tab === 'jobs' && !jobs.items.length) && (
         <div className="center" style={{ padding: 20 }}>
           <div className="spinner" />
         </div>

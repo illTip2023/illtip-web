@@ -78,8 +78,14 @@ export type Comment = {
   replies?: Comment[];
   replyCount?: number;
   likedArr?: { likedBy: string; likeTime: number }[];
+  /** Tips on this comment (newer backends): coinedBy is a plain userId string. */
+  coinArr?: { coinedBy: string; coins: number; coinTime: number }[];
+  totalCoins?: number;
+  likeCount?: number;
+  amILiked?: boolean;
   mentions?: Mention[];
   commentUserDetails?: PostUser[];
+  commenterDetails?: Partial<PostUser>;
 };
 
 /* ---------- helpers ---------- */
@@ -261,6 +267,16 @@ export async function commentPost(p: Post, body: { comment: string; commentActio
 
 export async function likeComment(p: Post, commentId: number, like: boolean) {
   return unwrap(await api.post('/post/comment/like', { statusPostId: Number(p.statusPostId), commentId, likeAction: like ? 'ADD' : 'REMOVE', ...(isSponsored(p) ? { sponsored: true } : {}) }));
+}
+
+/**
+ * POST /post/comment/coin { statusPostId, commentId, coins, sponsored? } (app services/post.ts coinComment).
+ * The backend answers 200 + success:false for refusals (insufficient balance, own comment, comment gone).
+ */
+export async function tipComment(p: Post, commentId: number, coins: number): Promise<any> {
+  const { data } = await api.post('/post/comment/coin', { statusPostId: Number(p.statusPostId), commentId, coins, ...(isSponsored(p) ? { sponsored: true } : {}) });
+  if (data && data.success === false) throw new ApiError(data.message || 'Could not send tip', 200, data);
+  return data;
 }
 
 /** POST /post/coin. Backend answers 200 + success:false for refusals (e.g. insufficient balance). */

@@ -255,14 +255,14 @@ function ctaFor(backend: SubscriptionPlan | undefined, status: MyStatus | undefi
   const current = isCurrentPlan(status, backend);
   const upgrade = !current && backend?.upgrade ? backend.upgrade : null;
   const unavailable = !backend || backend.resolvedPrice == null || !backend.resolvedCurrency;
-  return { current, upgrade, unavailable, label: current ? 'Current Plan' : upgrade ? 'Upgrade' : label };
+  return { current, upgrade, unavailable, label: current ? 'Current Plan' : upgrade ? `Upgrade · pay ${formatPrice(upgrade.amount, upgrade.currency)} today` : label };
 }
 
 function UpgradeNote({ upgrade }: { upgrade: SubscriptionPlan['upgrade'] }) {
   if (!upgrade) return null;
   return (
     <p className="pl-upgrade-note">
-      We will charge the difference ({formatPrice(upgrade.amount, upgrade.currency)}) today. Your plan renews on {formatDate(upgrade.renewsAt)}.
+      You already have a plan, so you only pay the difference ({formatPrice(upgrade.amount, upgrade.currency)}) today, not the full price. Your plan renews on {formatDate(upgrade.renewsAt)}.
     </p>
   );
 }

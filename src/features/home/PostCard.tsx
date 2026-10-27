@@ -35,6 +35,7 @@ import {
 } from './api';
 import { coinStore, patchPost, setSaved, useCoinBalance, usePostPatch, useSavedIds } from './store';
 import { ComboTipButton } from './ComboTip';
+import { CommentSheet } from './CommentSheet';
 
 /* ---------------- caption ---------------- */
 
@@ -657,6 +658,7 @@ export function PostCard({ post, detail, onDeleted, onCommentClick }: { post: Po
   const [lightbox, setLightbox] = useState<number | null>(null);
   const [likeBusy, setLikeBusy] = useState(false);
   const [saveBusy, setSaveBusy] = useState(false);
+  const [commentsOpen, setCommentsOpen] = useState(false);
   const ref = useRef<HTMLElement>(null);
 
   // Impression tracking: like the app, a post counts as seen when >= 20% is on screen.
@@ -817,9 +819,12 @@ export function PostCard({ post, detail, onDeleted, onCommentClick }: { post: Po
         <button
           className="hp-pill"
           aria-label="Comments"
+          aria-haspopup="dialog"
+          aria-expanded={onCommentClick ? undefined : commentsOpen}
           onClick={() => {
+            // App: the comment icon opens the comments sheet over the feed (PostCommentSheet); /post/:id stays for links.
             if (onCommentClick) onCommentClick();
-            else navigate(`/post/${id}?comment=1`);
+            else setCommentsOpen(true);
           }}
         >
           <span className="hp-pill-ic">
@@ -842,6 +847,7 @@ export function PostCard({ post, detail, onDeleted, onCommentClick }: { post: Po
       </footer>
 
       {editOpen && <EditModal post={post} caption={caption} open={editOpen} onClose={() => setEditOpen(false)} />}
+      {commentsOpen && <CommentSheet post={post} onClose={() => setCommentsOpen(false)} />}
       {detail && <Lightbox post={post} index={lightbox} onClose={() => setLightbox(null)} />}
     </article>
   );

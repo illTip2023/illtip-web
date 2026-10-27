@@ -466,3 +466,5 @@ html.hp-sheet-open .tabbar, html.hp-sheet-open .env-pill { visibility: hidden; }
   .hp-hbtn.hp-bell { width: 36px; }
   .hp-bell-dot { right: 6px; }
 }
+.hs-job-cats { margin: 2px 0 12px; }
+.hs-job-cats .chip { flex: none; white-space: nowrap; }
