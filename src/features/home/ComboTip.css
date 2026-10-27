@@ -1,0 +1,84 @@
+/* Combo tap-to-tip (port of illtip-mobile src/ui/atoms/ComboTipButton.tsx styles). */
+:root {
+  --ct-blue: #1b2a4a;
+  --ct-gold: #f5b400;
+  --ct-pill-bg: #fff8e1;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) { --ct-pill-bg: #3d3520; }
+}
+:root[data-theme='dark'] { --ct-pill-bg: #3d3520; }
+
+.ct-anchor { position: relative; margin-left: auto; flex: none; }
+.ct-anchor.rail { margin-left: 0; display: flex; flex-direction: column; align-items: center; min-width: 48px; }
+
+.ct-pill { display: flex; align-items: center; gap: 5px; transition: opacity 0.12s ease; }
+.ct-pill.rail { flex-direction: column; gap: 4px; }
+.ct-pill.hidden { opacity: 0; pointer-events: none; }
+
+.ct-icon {
+  width: 26px; height: 26px; border-radius: 50%; border: none; padding: 0; margin: 0;
+  background: var(--ct-pill-bg); color: var(--ct-gold);
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+  touch-action: manipulation; -webkit-touch-callout: none; user-select: none; -webkit-user-select: none;
+  -webkit-tap-highlight-color: transparent; position: relative;
+}
+/* hitSlop={6} */
+.ct-icon::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; }
+.ct-icon:active { opacity: 0.7; }
+.ct-icon:focus-visible { outline: 2px solid var(--blue); outline-offset: 2px; }
+.ct-pill.rail .ct-icon { width: 44px; height: 44px; background: rgba(15, 23, 42, 0.35); filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.5)); }
+
+.ct-count { padding: 4px 2px 4px 0; font-size: 13px; font-weight: 600; color: var(--ct-gold); line-height: 1; }
+.ct-pill.rail .ct-count { font-size: 12px; font-weight: 700; padding: 0; color: #fff; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.6); }
+/* Viewer text-only slides sit on a light background. */
+.vw-slide.text .ct-pill.rail .ct-count { color: var(--text); text-shadow: none; }
+.vw-slide.text .ct-pill.rail .ct-icon { background: rgba(127, 127, 127, 0.15); filter: none; }
+
+/* Combo overlay floats above without affecting layout (absolute, right/bottom aligned). */
+.ct-combo { position: absolute; right: 0; bottom: 0; z-index: 6; display: flex; flex-direction: column; align-items: center; }
+.ct-anchor.rail .ct-combo { right: 50%; transform: translateX(50%); }
+
+.ct-badge {
+  min-width: 80px; box-sizing: border-box; padding: 4px 12px; border-radius: 13px; margin-bottom: 6px;
+  background: var(--ct-blue); border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff; font-size: 11px; font-weight: 800; font-style: italic; letter-spacing: 0.3px; text-align: center; line-height: 16px;
+  white-space: nowrap; animation: ct-badge-pop 220ms cubic-bezier(0.5, 1, 0.89, 1);
+}
+.ct-btn-wrap { position: relative; width: 66px; height: 66px; display: flex; align-items: center; justify-content: center; }
+.ct-ring { position: absolute; inset: 0; transform: rotate(-90deg); }
+.ct-ring-arc { stroke: var(--ct-blue); stroke-dashoffset: 0; animation-name: ct-ring; animation-timing-function: linear; animation-fill-mode: forwards; }
+.ct-btn {
+  width: 56px; height: 56px; border-radius: 50%; border: none; padding: 0;
+  background: var(--ct-blue); color: #fff; cursor: pointer;
+  font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; font-family: inherit;
+  display: flex; align-items: center; justify-content: center; position: relative;
+  touch-action: manipulation; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent;
+  animation: ct-btn-pop 200ms cubic-bezier(0.5, 1, 0.89, 1);
+}
+.ct-btn::after { content: ''; position: absolute; inset: -6px; border-radius: 50%; }
+.ct-btn:focus-visible { outline: 2px solid var(--ct-gold); outline-offset: 3px; }
+
+@keyframes ct-ring { from { stroke-dashoffset: 0; } to { stroke-dashoffset: var(--ct-c); } }
+@keyframes ct-btn-pop { 0% { transform: scale(1); } 40% { transform: scale(1.2); } 100% { transform: scale(1); } }
+@keyframes ct-badge-pop { 0% { transform: scale(1); } 41% { transform: scale(1.25); } 100% { transform: scale(1); } }
+
+/* Long-press gift popup */
+.ct-gift-backdrop { position: fixed; inset: 0; z-index: 150; background: rgba(0, 0, 0, 0.25); animation: ct-fade 0.15s ease; }
+.ct-gift-panel {
+  position: absolute; width: 248px; box-sizing: border-box; display: flex; justify-content: space-between;
+  background: var(--ct-blue); border-radius: 18px; padding: 10px; box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+  transform-origin: bottom right; animation: ct-gift-in 180ms cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+.ct-gift { width: 72px; display: flex; flex-direction: column; align-items: center; border: none; background: none; border-radius: 12px; padding: 6px 0; cursor: pointer; color: #fff; font-family: inherit; }
+.ct-gift:hover, .ct-gift:active { background: rgba(255, 255, 255, 0.12); }
+.ct-gift:focus-visible { outline: 2px solid var(--ct-gold); }
+.ct-gift-emoji { font-size: 26px; line-height: 1.2; margin-bottom: 2px; }
+.ct-gift-label { font-size: 11px; font-weight: 700; margin-bottom: 2px; }
+.ct-gift-cost { display: inline-flex; align-items: center; gap: 3px; background: rgba(255, 255, 255, 0.12); border-radius: 8px; padding: 2px 6px; color: var(--ct-gold); font-size: 10px; font-weight: 800; }
+@keyframes ct-gift-in { from { opacity: 0; transform: scale(0.85); } to { opacity: 1; transform: scale(1); } }
+@keyframes ct-fade { from { opacity: 0; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .ct-badge, .ct-btn, .ct-gift-panel, .ct-gift-backdrop { animation: none; }
+}

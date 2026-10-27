@@ -32,6 +32,7 @@ import {
   type Post,
 } from './api';
 import { coinStore, patchPost, setSaved, useCoinBalance, usePostPatch, useSavedIds } from './store';
+import { ComboTipButton } from './ComboTip';
 
 /* ---------------- caption ---------------- */
 
@@ -315,6 +316,7 @@ const TIP_PRESETS = [
   { coins: 100, label: 'Suitcase' },
 ];
 
+/** Legacy amount-picker dialog. Post tip buttons now use ComboTipButton (tap = 1 coin combo, long-press = gifts) like the app; kept exported for any other caller. */
 export function TipModal({ post, open, onClose }: { post: Post; open: boolean; onClose: () => void }) {
   const balance = useCoinBalance();
   const [amount, setAmount] = useState(1);
@@ -517,12 +519,10 @@ export function PostCard({ post, detail, onDeleted, onCommentClick }: { post: Po
   const isOwn = !!user && (String(post.createdBy) === String(user.id) || author.userId === String(user.id));
   const liked = patch.liked ?? !!post.amILiked;
   const likeCount = patch.likeCount ?? (post.likedArr?.length || 0);
-  const coins = patch.coins ?? coinTotal(post);
   const comments = patch.comments ?? (post.commentArr?.length || 0);
   const caption = patch.caption ?? post.caption ?? '';
   const isSaved = saved.loaded ? saved.ids.has(id) : !!post.isSaved;
   const boosted = isBoosted(post);
-  const [tipOpen, setTipOpen] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [lightbox, setLightbox] = useState<number | null>(null);
   const [likeBusy, setLikeBusy] = useState(false);
@@ -694,19 +694,9 @@ export function PostCard({ post, detail, onDeleted, onCommentClick }: { post: Po
           <Icon name="share" size={20} />
         </button>
         <span className="grow" />
-        {isOwn ? (
-          <span className="hp-tip static" title="Tips on your post">
-            <Icon name="coin" size={18} /> {compactNumber(coins)}
-          </span>
-        ) : (
-          <button className="hp-tip" onClick={() => setTipOpen(true)} aria-label="Tip this post">
-            <Icon name="coin" size={18} /> <span>Tip</span>
-            {coins > 0 && <span className="hp-tip-count">{compactNumber(coins)}</span>}
-          </button>
-        )}
+        <ComboTipButton post={post} hideTipIcon={isOwn} />
       </footer>
 
-      {tipOpen && <TipModal post={post} open={tipOpen} onClose={() => setTipOpen(false)} />}
       {editOpen && <EditModal post={post} caption={caption} open={editOpen} onClose={() => setEditOpen(false)} />}
       {detail && <Lightbox post={post} index={lightbox} onClose={() => setLightbox(null)} />}
     </article>

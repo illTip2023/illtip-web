@@ -13,7 +13,6 @@ import { Avatar, Icon, compactNumber, timeAgo, toast } from '../../ui/kit';
 import {
   authorOf,
   bookmarkPost,
-  coinTotal,
   epochMs,
   fetchFeed,
   getPost,
@@ -27,7 +26,8 @@ import {
   type Media,
   type Post,
 } from './api';
-import { PollCard, RichText, TipModal, copyText } from './PostCard';
+import { PollCard, RichText, copyText } from './PostCard';
+import { ComboTipButton } from './ComboTip';
 import { loadSaved, patchPost, setSaved, usePostPatch, useSavedIds } from './store';
 import { ViewerComments } from './ViewerComments';
 import { takeWatchFeedSeed } from './ViewerOpen';
@@ -144,7 +144,6 @@ function Watch({ id }: { id: string }) {
   const [soundOn, setSoundOn] = useState(readSound);
   const [hidden, setHidden] = useState(typeof document !== 'undefined' && document.hidden);
   const [commentsFor, setCommentsFor] = useState<Post | null>(null);
-  const [tipFor, setTipFor] = useState<Post | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
   const [loadFailed, setLoadFailed] = useState(false);
   const pagerRef = useRef<HTMLDivElement>(null);
@@ -330,7 +329,8 @@ function Watch({ id }: { id: string }) {
   // Keyboard: arrows/PageUp/PageDown/j/k page, space toggles play, m mutes, Esc goes back.
   useEffect(() => {
     const k = (e: KeyboardEvent) => {
-      if (commentsFor || tipFor || e.metaKey || e.ctrlKey || e.altKey) return;
+      // Gift popup / coin purchase sheet (ComboTipButton portals) own the keyboard while open.
+      if (commentsFor || document.querySelector('.ct-gift-backdrop, .modal-backdrop') || e.metaKey || e.ctrlKey || e.altKey) return;
       const t = e.target as HTMLElement;
       if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) return;
       if (e.key === 'ArrowDown' || e.key === 'PageDown' || e.key === 'j') {
@@ -357,7 +357,7 @@ function Watch({ id }: { id: string }) {
     };
     window.addEventListener('keydown', k);
     return () => window.removeEventListener('keydown', k);
-  }, [commentsFor, tipFor, step, toggleSound, back]);
+  }, [commentsFor, step, toggleSound, back]);
 
   const registerToggle = useCallback((i: number, fn: (() => void) | null) => {
     if (fn) togglers.current.set(i, fn);
@@ -407,7 +407,6 @@ function Watch({ id }: { id: string }) {
                         onToggleSound={toggleSound}
                         onAutoplayBlocked={onAutoplayBlocked}
                         onComments={() => setCommentsFor(p)}
-                        onTip={() => setTipFor(p)}
                         registerToggle={registerToggle}
                       />
                     ) : (
@@ -451,7 +450,6 @@ function Watch({ id }: { id: string }) {
           </div>
         )}
       </div>
-      {tipFor && <TipModal post={tipFor} open onClose={() => setTipFor(null)} />}
     </div>
   );
 }
@@ -476,7 +474,6 @@ function Slide({
   onToggleSound,
   onAutoplayBlocked,
   onComments,
-  onTip,
   registerToggle,
 }: {
   post: Post;
@@ -489,7 +486,6 @@ function Slide({
   onToggleSound: () => void;
   onAutoplayBlocked: () => void;
   onComments: () => void;
-  onTip: () => void;
   registerToggle: (i: number, fn: (() => void) | null) => void;
 }) {
   const { user } = useAuth();
@@ -502,7 +498,6 @@ function Slide({
   const isOwn = !!user && (String(post.createdBy) === String(user.id) || author.userId === String(user.id));
   const liked = patch.liked ?? !!post.amILiked;
   const likeCount = patch.likeCount ?? (post.likedArr?.length || 0);
-  const coins = patch.coins ?? coinTotal(post);
   const comments = patch.comments ?? (post.commentArr?.length || 0);
   const caption = (patch.caption ?? post.caption ?? '').trim();
   const mentions = patch.mentions ?? post.mentions;
@@ -666,18 +661,7 @@ function Slide({
           <RailBtn label="Share post" count="Share" onClick={share}>
             <Icon name="share" size={24} />
           </RailBtn>
-          {isOwn ? (
-            <div className="vw-rail-item" title="Tips on your post">
-              <span className="vw-rail-ico static">
-                <Icon name="coin" size={24} />
-              </span>
-              <span className="vw-rail-count">{compactNumber(coins)}</span>
-            </div>
-          ) : (
-            <RailBtn label="Send a tip" count={coins > 0 ? compactNumber(coins) : 'Tip'} onClick={onTip} className="tip">
-              <Icon name="coin" size={24} />
-            </RailBtn>
-          )}
+          <ComboTipButton post={post} variant="rail" hideTipIcon={isOwn} />
           {currentIsVideo && isCurrent && (
             <>
               <button className="vw-mini" onClick={togglePlay} aria-label={userPaused ? 'Play video' : 'Pause video'}>
