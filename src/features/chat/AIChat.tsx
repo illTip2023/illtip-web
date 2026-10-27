@@ -50,6 +50,24 @@ function cleanBotText(raw?: string | null) {
   return s.trim();
 }
 
+/**
+ * The chatbot's job list formats some dates from millisecond timestamps as if they were seconds, giving years like
+ * "Apr 3, 58469". That date is the real timestamp × 1000, so dividing it back recovers the real day (to within ~90 s).
+ * Dates that are already correct are left alone. (Also fixed at the source in the backend.)
+ */
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+export function fixBotDates(s: string) {
+  return s.replace(/\b(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\s+(\d{1,2}),\s+(\d{5,6})\b/g, (all, mon: string, day: string, year: string) => {
+    const t = Date.UTC(0, MONTHS.indexOf(mon), Number(day), 12);
+    const d = new Date(t);
+    d.setUTCFullYear(Number(year));
+    const real = new Date(d.getTime() / 1000);
+    const y = real.getUTCFullYear();
+    if (!Number.isFinite(y) || y < 2000 || y > 2100) return all;
+    return `${MONTHS[real.getUTCMonth()]} ${real.getUTCDate()}, ${y}`;
+  });
+}
+
 const DATE_Q = /\b(today'?s?\s+date|what(?:'s| is)\s+(?:the\s+)?(?:today'?s?\s+)?date|current\s+date|date\s+today|what\s+day\s+is\s+(?:it|today)|which\s+day\s+is\s+(?:it|today))\b/i;
 const TIME_Q = /\b(what(?:'s| is)\s+(?:the\s+)?time|current\s+time|time\s+(?:is\s+it|now)|what\s+time\s+is\s+it)\b/i;
 const BOTH_Q = /\b(what(?:'s| is)\s+(?:the\s+)?date\s+and\s+time|date\s+and\s+time\s+now)\b/i;
@@ -115,7 +133,7 @@ function Inline({ text }: { text: string }) {
 }
 
 function BotText({ text }: { text: string }) {
-  const lines = text.split('\n');
+  const lines = fixBotDates(text).split('\n');
   const out: React.ReactNode[] = [];
   let bullets: string[] = [];
   const flush = () => {
