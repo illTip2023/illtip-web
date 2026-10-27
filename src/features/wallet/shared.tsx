@@ -1,9 +1,10 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../lib/auth';
 import { APP_LINKS } from '../../lib/env';
 import { useQuery } from '../../lib/query';
 import { Link } from '../../lib/router';
 import { Icon } from '../../ui/kit';
+import { BuyCoinsModal } from '../coins/BuyCoins';
 import { fetchCoinBalance, fetchReferralDashboard, fetchWalletBalance, fetchWalletProfile } from './walletApi';
 import './wallet.css';
 
@@ -36,18 +37,27 @@ export function StoreButtons({ light }: { light?: boolean }) {
   );
 }
 
-/** Coin purchases and subscriptions are paid in the native app (Stripe / Paystack sheets). */
+/** Coin top-ups happen right here (same flow as the app's recharge sheet); plans live on /plans. */
 export function AppPaymentsCard({ compact }: { compact?: boolean }) {
+  const [buying, setBuying] = useState(false);
   return (
     <div className={'wl-appcard' + (compact ? ' compact' : '')}>
       <div className="wl-appcard-ic">
         <Icon name="coin" size={26} />
       </div>
       <div className="grow">
-        <div className="wl-appcard-title">Buy coins / upgrade in the i'llTip app</div>
-        <div className="wl-appcard-sub">Coin top-ups and subscriptions are handled securely in the mobile app. Your balance shows up here right after.</div>
-        <StoreButtons light />
+        <div className="wl-appcard-title">Buy coins / upgrade</div>
+        <div className="wl-appcard-sub">Top up your tip coins with a card or Paystack, or upgrade your plan. Your balance updates here and in the app.</div>
+        <div className="row-wrap" style={{ marginTop: 10 }}>
+          <button className="btn btn-sm" onClick={() => setBuying(true)}>
+            Buy coins
+          </button>
+          <Link to="/plans" className="btn btn-sm btn-ghost">
+            See plans
+          </Link>
+        </div>
       </div>
+      <BuyCoinsModal open={buying} onClose={() => setBuying(false)} />
     </div>
   );
 }

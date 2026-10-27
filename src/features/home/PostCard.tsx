@@ -2,7 +2,8 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AutoVideo } from '../../ui/AutoVideo';
 import { Link, navigate } from '../../lib/router';
 import { useAuth } from '../../lib/auth';
-import { APP_LINKS } from '../../lib/env';
+import { BuyCoinsFlow, BuyCoinsPrompt, stepTitle as buyStepTitle } from '../coins/BuyCoins';
+import { rainCoins } from '../coins/CoinRain';
 import { setQueryData, invalidate, useQuery } from '../../lib/query';
 import { Avatar, Icon, Modal, compactNumber, timeAgo, toast } from '../../ui/kit';
 import { I } from './icons';
@@ -302,23 +303,8 @@ export function PollCard({ post }: { post: Post }) {
 
 /* ---------------- tipping ---------------- */
 
-export function BuyCoinsCard({ compact }: { compact?: boolean }) {
-  return (
-    <div className={'hp-buy' + (compact ? ' compact' : '')}>
-      <div>
-        <div className="hp-buy-title">Buy coins in the i'llTip app</div>
-        {!compact && <div className="muted small">Coin purchases are handled securely in the mobile app. Your balance syncs here automatically.</div>}
-      </div>
-      <div className="row-wrap">
-        <a className="btn btn-sm btn-dark" href={APP_LINKS.ios} target="_blank" rel="noreferrer">
-          App Store
-        </a>
-        <a className="btn btn-sm btn-dark" href={APP_LINKS.android} target="_blank" rel="noreferrer">
-          Google Play
-        </a>
-      </div>
-    </div>
-  );
+export function BuyCoinsCard({ compact, onBuy }: { compact?: boolean; onBuy: () => void }) {
+  return <BuyCoinsPrompt compact={compact} onBuy={onBuy} />;
 }
 
 const TIP_PRESETS = [
@@ -334,11 +320,15 @@ export function TipModal({ post, open, onClose }: { post: Post; open: boolean; o
   const [custom, setCustom] = useState('');
   const [busy, setBusy] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [view, setView] = useState<'tip' | 'buy'>('tip');
+  const [buyBusy, setBuyBusy] = useState(false);
+  const [buyStep, setBuyStep] = useState('pick');
   const author = authorOf(post);
 
   useEffect(() => {
     if (!open) return;
     setCustom('');
+    setView('tip');
     setLoading(true);
     fetchCoinBalance()
       .then((b) => coinStore.set(b))
@@ -358,54 +348,67 @@ export function TipModal({ post, open, onClose }: { post: Post; open: boolean; o
       const nb = Number(res?.coinBalance);
       coinStore.set(Number.isFinite(nb) ? nb : Math.max(0, (balance ?? n) - n));
       patchPost(Number(post.statusPostId), (old) => ({ coins: (old.coins ?? coinTotal(post)) + n }));
+      rainCoins(n);
       toast.ok(`You tipped ${author.name} ${n} coin${n === 1 ? '' : 's'}`);
       onClose();
     } catch (e: any) {
       const nb = Number(e?.data?.data?.coinBalance);
       if (Number.isFinite(nb)) coinStore.set(nb);
-      toast.error(/insufficient|not enough/i.test(String(e?.message)) ? 'Not enough coins. Buy coins in the i\'llTip app to keep tipping.' : errMsg(e, 'Could not send tip. Please try again.'));
+      if (e?.status === 402 || /insufficient|not enough|low balance/i.test(String(e?.message))) {
+        toast.error('Not enough coins. Recharge to continue tipping.');
+        setView('buy');
+      } else toast.error(errMsg(e, 'Could not send tip. Please try again.'));
     } finally {
       setBusy(false);
     }
   };
 
+  const close = () => {
+    if (buyBusy) return;
+    onClose();
+  };
+
   return (
-    <Modal open={open} onClose={onClose} title={`Tip ${author.name}`}>
-      <div className="stack">
-        <div className="hp-balance">
-          <span className="hp-coin-badge">
-            <Icon name="coin" size={22} />
-          </span>
-          <div className="grow">
-            <div className="muted small">Your coin balance</div>
-            <div className="hp-balance-n">{balance === undefined ? (loading ? '…' : '—') : compactNumber(balance)}</div>
+    <Modal open={open} onClose={close} title={view === 'buy' ? buyStepTitle(buyStep as any) : `Tip ${author.name}`}>
+      {view === 'buy' ? (
+        <BuyCoinsFlow doneLabel="Continue tipping" onCancel={() => setView('tip')} onDone={() => setView('tip')} onBusyChange={setBuyBusy} onStepChange={setBuyStep} />
+      ) : (
+        <div className="stack">
+          <div className="hp-balance">
+            <span className="hp-coin-badge">
+              <Icon name="coin" size={22} />
+            </span>
+            <div className="grow">
+              <div className="muted small">Your coin balance</div>
+              <div className="hp-balance-n">{balance === undefined ? (loading ? '…' : '—') : compactNumber(balance)}</div>
+            </div>
           </div>
-        </div>
-        <div>
-          <div className="label">Choose an amount</div>
-          <div className="hp-tip-grid">
-            {TIP_PRESETS.map((p) => (
-              <button
-                key={p.coins}
-                className={'hp-tip-opt' + (!custom && amount === p.coins ? ' active' : '')}
-                onClick={() => {
-                  setAmount(p.coins);
-                  setCustom('');
-                }}
-              >
-                <span className="hp-tip-n">{p.coins}</span>
-                <span className="tiny muted">{p.label}</span>
-              </button>
-            ))}
+          <div>
+            <div className="label">Choose an amount</div>
+            <div className="hp-tip-grid">
+              {TIP_PRESETS.map((p) => (
+                <button
+                  key={p.coins}
+                  className={'hp-tip-opt' + (!custom && amount === p.coins ? ' active' : '')}
+                  onClick={() => {
+                    setAmount(p.coins);
+                    setCustom('');
+                  }}
+                >
+                  <span className="hp-tip-n">{p.coins}</span>
+                  <span className="tiny muted">{p.label}</span>
+                </button>
+              ))}
+            </div>
+            <input className="input" style={{ marginTop: 10 }} inputMode="numeric" placeholder="Or enter a custom amount" value={custom} onChange={(e) => setCustom(e.target.value.replace(/[^\d]/g, '').slice(0, 6))} />
           </div>
-          <input className="input" style={{ marginTop: 10 }} inputMode="numeric" placeholder="Or enter a custom amount" value={custom} onChange={(e) => setCustom(e.target.value.replace(/[^\d]/g, '').slice(0, 6))} />
+          {short && <div className="hp-warn small">You don't have enough coins for this tip.</div>}
+          <button className="btn btn-block" disabled={!validN || short || busy || balance === undefined} onClick={send}>
+            <Icon name="coin" size={18} /> {busy ? 'Sending…' : validN ? `Send ${n} coin${n === 1 ? '' : 's'}` : 'Send tip'}
+          </button>
+          <BuyCoinsCard compact={!short && (balance ?? 0) > 0} onBuy={() => setView('buy')} />
         </div>
-        {short && <div className="hp-warn small">You don't have enough coins for this tip.</div>}
-        <button className="btn btn-block" disabled={!validN || short || busy || balance === undefined} onClick={send}>
-          <Icon name="coin" size={18} /> {busy ? 'Sending…' : validN ? `Send ${n} coin${n === 1 ? '' : 's'}` : 'Send tip'}
-        </button>
-        <BuyCoinsCard compact={!short && (balance ?? 0) > 0} />
-      </div>
+      )}
     </Modal>
   );
 }
@@ -580,6 +583,16 @@ export function PostCard({ post, detail, onDeleted, onCommentClick }: { post: Po
 
   const share = async () => {
     const url = shareUrl(id);
+    // Phones: the native share sheet (WhatsApp, X, Messages…), like the app. Desktop / no share sheet: copy the link.
+    const nav = navigator as any;
+    if (typeof nav.share === 'function' && window.matchMedia?.('(pointer: coarse)').matches) {
+      try {
+        await nav.share({ title: "i'llTip", text: (caption || 'Check out this post on i\'llTip').slice(0, 140), url });
+        return;
+      } catch (e: any) {
+        if (e?.name === 'AbortError') return; // user closed the sheet
+      }
+    }
     (await copyText(url)) ? toast.ok('Link copied to clipboard.') : toast.error('Could not copy link.');
   };
 
