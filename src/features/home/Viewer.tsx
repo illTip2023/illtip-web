@@ -392,7 +392,7 @@ function Watch({ id }: { id: string }) {
           ) : (
             <div className="vw-pager" ref={pagerRef} onScroll={onScroll}>
               {items.map((p, i) => {
-                const near = Math.abs(i - active) <= MOUNT_RADIUS;
+                const near = Math.abs(i - active) <= MOUNT_RADIUS || i === nextVideoIdx;
                 const load: VideoLoad = i === active ? 'play' : i === nextVideoIdx ? 'preload' : Math.abs(i - active) === 1 ? 'keep' : 'none';
                 return (
                   <section className="vw-slide-wrap" data-vw-index={i} key={p.statusPostId} aria-label={`Post ${i + 1}`}>

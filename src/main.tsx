@@ -55,7 +55,7 @@ function App() {
   }, [legacy]);
   const { session } = useAuth();
   const hit = resolveRoute(ROUTES, pathname);
-  const needsAuth = hit ? hit.route.auth !== false && hit.route.chrome !== false : true;
+  const needsAuth = hit ? hit.route.auth === true || (hit.route.auth !== false && hit.route.chrome !== false) : true;
 
   useEffect(() => {
     if (!legacy && needsAuth && !session) navigate('/login?next=' + encodeURIComponent(full), { replace: true });

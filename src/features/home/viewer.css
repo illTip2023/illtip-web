@@ -60,6 +60,7 @@ html.vw-lock, html.vw-lock body { overflow: hidden; overscroll-behavior: none; }
 .vw-left > * { pointer-events: auto; }
 .vw-author { display: inline-flex; align-items: center; gap: 8px; max-width: 100%; color: #fff; text-decoration: none; align-self: flex-start; }
 .vw-author .avatar { background: #374151; }
+.vw-author .avatar-fallback { color: #fff; }
 .vw-author-name { font-weight: 700; font-size: 15px; min-width: 0; flex: 0 1 auto; }
 .vw-author:hover .vw-author-name { text-decoration: underline; }
 .vw-time { font-size: 12px; color: rgba(255, 255, 255, 0.7); flex: none; }

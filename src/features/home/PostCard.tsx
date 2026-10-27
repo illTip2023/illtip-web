@@ -1,3 +1,4 @@
+import { openWatch } from './ViewerOpen';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AutoVideo } from '../../ui/AutoVideo';
 import { Link, navigate } from '../../lib/router';
@@ -663,7 +664,7 @@ export function PostCard({ post, detail, onDeleted, onCommentClick }: { post: Po
         <PostMenu items={menu} />
       </header>
 
-      <PostMedia post={post} onOpenImage={detail ? (i) => setLightbox(i) : open ? () => open() : undefined} onOpenPost={open} />
+      <PostMedia post={post} onOpenImage={detail ? (i) => setLightbox(i) : open ? () => open() : undefined} onOpenPost={detail ? undefined : () => openWatch(post)} />
       <Caption post={patch.mentions ? { ...post, mentions: patch.mentions } : post} text={caption} full={detail} onOpen={open} />
       <PollCard post={post} />
 
