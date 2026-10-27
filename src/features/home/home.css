@@ -468,3 +468,11 @@ html.hp-sheet-open .tabbar, html.hp-sheet-open .env-pill { visibility: hidden; }
 }
 .hs-job-cats { margin: 2px 0 12px; }
 .hs-job-cats .chip { flex: none; white-space: nowrap; }
+
+/* Boost button beside Post (the app's CreatePostModal header). */
+.hp-boost-btn { display: inline-flex; align-items: center; gap: 6px; flex: none; min-height: 36px; padding: 8px 12px; margin-right: 8px; border: none; border-radius: 10px; background: #eef4ff; color: #5b8fd9; font-size: 14px; font-weight: 700; cursor: pointer; }
+.hp-boost-btn.on { color: #2c4364; background: #dde8fb; }
+.hp-boost-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+.hp-composer-bar .hp-boost-btn { min-height: 32px; padding: 6px 10px; margin-left: auto; }
+[data-theme='dark'] .hp-boost-btn { background: rgba(91, 143, 217, 0.16); color: #8fb3ea; }
+[data-theme='dark'] .hp-boost-btn.on { color: #cfe0ff; }

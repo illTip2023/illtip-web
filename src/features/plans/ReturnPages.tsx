@@ -14,8 +14,9 @@ import { clearPending, fetchStatus, pollUntilActive, readPending, refreshSubscri
 import { planTitle } from './catalog';
 import { ConfirmingBody, ResultBody } from './checkout';
 import { getStripe } from './stripe';
+import { BOOST_PLAN_ID, clearBoostDraft, finishBoostDraft, takeBoostDraft, type BoostOutcome } from './boost';
 
-type State = { k: 'checking' } | { k: 'failed'; message: string } | { k: 'done'; confirmed: boolean };
+type State = { k: 'checking' } | { k: 'failed'; message: string } | { k: 'done'; confirmed: boolean; boost?: BoostOutcome | 'no-draft' };
 
 /** Reads the query once, then drops it from the address bar (it can carry the PaymentIntent client secret). */
 function useOneShotQuery(cleanPath: string) {
@@ -53,6 +54,11 @@ async function confirmPending(pending: PendingPurchase | null, isCancelled: () =
   if (pending) {
     const r = await pollUntilActive(pending.catalog, pending.planId, { isCancelled });
     if (r.confirmed) clearPending();
+    // Boost Post bought from the composer / a post's menu: publish or boost it now that the credit is there.
+    if (r.confirmed && pending.planId === BOOST_PLAN_ID) {
+      const draft = takeBoostDraft();
+      return { k: 'done', confirmed: true, boost: draft ? await finishBoostDraft(draft) : 'no-draft' };
+    }
     return { k: 'done', confirmed: r.confirmed };
   }
   // No record of what was bought (e.g. a different browser tab): one fresh status read, then a neutral message.
@@ -61,8 +67,43 @@ async function confirmPending(pending: PendingPurchase | null, isCancelled: () =
   return { k: 'done', confirmed: false };
 }
 
+function BoostResult({ outcome, next }: { outcome: BoostOutcome | 'no-draft'; next: string }) {
+  const ok = outcome !== 'no-draft' && outcome.ok;
+  const title =
+    outcome === 'no-draft'
+      ? 'Boost credit added'
+      : !outcome.ok
+        ? 'Payment received'
+        : outcome.kind === 'new'
+          ? outcome.boosted
+            ? 'Post boosted and published!'
+            : 'Post published'
+          : 'Post boosted for 3 days!';
+  const msg =
+    outcome === 'no-draft'
+      ? 'Your boost credit is ready. Create a post and tap Boost to use it.'
+      : !outcome.ok
+        ? `${outcome.message} Your boost credit is saved on your account. Tap Boost on your post to use it.`
+        : outcome.kind === 'new' && !outcome.boosted
+          ? 'Your post is live, but the boost has not applied yet. Tap Boost post in the post menu to apply it.'
+          : 'Your post is now shown higher in the home feed to many more people.';
+  return (
+    <div className="pl-result">
+      <div className={'pl-result-icon' + (ok ? ' ok' : ' wait')} aria-hidden>
+        {ok ? '🚀' : '✓'}
+      </div>
+      <div className="pl-result-title">{title}</div>
+      <p className="pl-result-msg">{msg}</p>
+      <button className="btn btn-block" onClick={() => navigate(next)}>
+        Continue
+      </button>
+    </div>
+  );
+}
+
 function ReturnView({ state, pending, onRetry }: { state: State; pending: PendingPurchase | null; onRetry: () => void }) {
   const next = safeNext(pending?.next);
+  const isBoost = pending?.planId === BOOST_PLAN_ID;
   return (
     <div className="pl-page">
       <PageHeader title="Payment" />
@@ -76,15 +117,17 @@ function ReturnView({ state, pending, onRetry }: { state: State; pending: Pendin
             </div>
             <div className="pl-result-title">Payment not completed</div>
             <p className="pl-result-msg">{state.message}</p>
-            <button className="btn btn-block" onClick={() => navigate(pending ? `/plans/checkout?plan=${encodeURIComponent(pending.planId)}${next ? `&next=${encodeURIComponent(next)}` : ''}` : '/plans')}>
-              Try again
+            <button className="btn btn-block" onClick={() => navigate(isBoost ? next || '/' : pending ? `/plans/checkout?plan=${encodeURIComponent(pending.planId)}${next ? `&next=${encodeURIComponent(next)}` : ''}` : '/plans')}>
+              {isBoost ? 'Back' : 'Try again'}
             </button>
-            {next && (
+            {next && !isBoost && (
               <button className="btn btn-ghost btn-block" onClick={() => navigate(next)}>
                 Not now
               </button>
             )}
           </div>
+        ) : state.boost ? (
+          <BoostResult outcome={state.boost} next={next || '/'} />
         ) : (
           <ResultBody confirmed={state.confirmed} upgrade={pending?.upgrade} title={pending ? planTitle(pending.planId) : undefined} next={next} onRecheck={onRetry} />
         )}
@@ -101,6 +144,7 @@ export function StripeReturnPage() {
     const clientSecret = q.get('payment_intent_client_secret');
     if (redirectStatus === 'failed') {
       clearPending();
+      if (pending?.planId === BOOST_PLAN_ID) clearBoostDraft();
       return { k: 'failed', message: 'Your bank or card provider declined the payment. You have not been charged.' };
     }
     if (clientSecret) {
@@ -110,6 +154,7 @@ export function StripeReturnPage() {
         const st = paymentIntent?.status;
         if (st === 'requires_payment_method' || st === 'canceled') {
           clearPending();
+          if (pending?.planId === BOOST_PLAN_ID) clearBoostDraft();
           return { k: 'failed', message: 'The payment was not completed. Please try again with another payment method.' };
         }
       } catch {

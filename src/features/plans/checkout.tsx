@@ -49,7 +49,8 @@ type Phase =
 
 const CHECKOUT_REUSE_MS = 20 * 60 * 1000;
 
-export function useCheckoutFlow({ next }: { next?: string | null } = {}) {
+/** `onPaid`: the caller confirms the purchase itself (Boost Post) instead of the generic "Subscription active" dialog. */
+export function useCheckoutFlow({ next, onPaid }: { next?: string | null; onPaid?: (plan: SubscriptionPlan) => void } = {}) {
   const { user } = useAuth();
   const [phase, setPhase] = useState<Phase>({ k: 'idle' });
   const inFlight = useRef(false);
@@ -116,6 +117,11 @@ export function useCheckoutFlow({ next }: { next?: string | null } = {}) {
 
   const confirm = async (plan: SubscriptionPlan, upgrade: boolean) => {
     reuse.current.delete(plan.planId + (upgrade ? ':upgrade' : ''));
+    if (onPaid) {
+      setPhase({ k: 'idle' });
+      onPaid(plan);
+      return;
+    }
     setPhase({ k: 'confirming', plan, upgrade });
     inFlight.current = true;
     const r = await pollUntilActive(plan.catalog, plan.planId, { isCancelled: () => !alive.current });

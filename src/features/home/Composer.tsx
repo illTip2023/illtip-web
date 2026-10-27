@@ -5,6 +5,7 @@ import { I } from './icons';
 import { createPost, errMsg, getPost, MAX_ATTACHMENTS, remapMentions, uploadImage, type Post } from './api';
 import { useMentionPicker } from './useMentionPicker';
 import { MAX_VIDEO_MB, MAX_VIDEO_SECONDS, uploadVideo, videoDuration } from './uploadVideo';
+import { BoostCheckoutModal, createBoostedPost, fetchBoostCredits, saveBoostDraft, takeBoostDraft, type BoostPostBody } from '../plans/boost';
 
 /** One picked attachment. Photos and videos can be mixed, up to MAX_ATTACHMENTS (the app's CreatePostModal rules). */
 type Att = { id: string; file: File; url: string; kind: 'image' | 'video'; seconds?: number | null };
@@ -155,85 +156,177 @@ export function Composer({
     setFocused(false);
   };
 
-  const submit = async () => {
-    if (busy) return;
+  /** Same checks as the app's CreatePostModal before Post or Boost. */
+  const validate = () => {
+    if (busy) return false;
     if (!canPost) {
-      if (checking) return;
+      if (checking) return false;
       if (pollOn && !optsUnique) toast.error('Poll options must be different.');
       else if (pollOn && qLen > POLL_MAX) toast.error(`Poll questions can be up to ${POLL_MAX} characters.`);
       else if (pollOn) toast.error('Add a question and at least two options.');
       else toast.error('Add text, a photo or a video.');
-      return;
+      return false;
     }
+    return true;
+  };
+
+  /** Uploads the attachments (progress in the bar) and returns the POST /post body. */
+  const buildBody = async (): Promise<BoostPostBody> => {
     const caption = text.trim();
-    try {
-      let imageArr: any[] = [];
-      if (!pollOn && files.length) {
-        // Like the app's useCreatePost: per-item fractions averaged into one bar, the last 10% for creating the post.
-        const fr = files.map(() => 0);
-        const processing = files.map(() => false);
-        const report = () => {
-          const avg = fr.reduce((s, x) => s + x, 0) / files.length;
-          setProgress(Math.min(0.9, avg * 0.9));
-          const vidsProcessing = files.some((f, i) => f.kind === 'video' && processing[i] && fr[i] < 1);
-          setBusy(vidsProcessing ? 'Processing video…' : `Uploading ${Math.round(Math.min(0.9, avg * 0.9) * 100)}%`);
-        };
-        setProgress(0);
-        setBusy('Uploading 0%');
-        const batches = await Promise.all(
-          files.map(async (f, i) => {
-            if (f.kind === 'video') {
-              const r = await uploadVideo(f.file, ({ phase, fraction }) => {
-                // upload bytes = first 80% of this item; the server's MP4 conversion = the rest
-                processing[i] = phase === 'processing';
-                fr[i] = phase === 'processing' ? 0.8 : fraction * 0.8;
-                report();
-              });
-              fr[i] = 1;
-              processing[i] = false;
+    let imageArr: any[] = [];
+    if (!pollOn && files.length) {
+      // Like the app's useCreatePost: per-item fractions averaged into one bar, the last 10% for creating the post.
+      const fr = files.map(() => 0);
+      const processing = files.map(() => false);
+      const report = () => {
+        const avg = fr.reduce((s, x) => s + x, 0) / files.length;
+        setProgress(Math.min(0.9, avg * 0.9));
+        const vidsProcessing = files.some((f, i) => f.kind === 'video' && processing[i] && fr[i] < 1);
+        setBusy(vidsProcessing ? 'Processing video…' : `Uploading ${Math.round(Math.min(0.9, avg * 0.9) * 100)}%`);
+      };
+      setProgress(0);
+      setBusy('Uploading 0%');
+      const batches = await Promise.all(
+        files.map(async (f, i) => {
+          if (f.kind === 'video') {
+            const r = await uploadVideo(f.file, ({ phase, fraction }) => {
+              // upload bytes = first 80% of this item; the server's MP4 conversion = the rest
+              processing[i] = phase === 'processing';
+              fr[i] = phase === 'processing' ? 0.8 : fraction * 0.8;
               report();
-              return r;
-            }
-            const r = await uploadImage(f.file);
+            });
             fr[i] = 1;
+            processing[i] = false;
             report();
             return r;
-          }),
-        );
-        imageArr = batches.flat();
-      }
-      setProgress((p) => (p == null ? null : 0.9));
-      setBusy('Posting…');
-      const id = await createPost(
-        pollOn
-          ? { caption: '', imageArr: [], mentions: [], poll: { question: caption, options: cleanOpts, durationHours: duration } }
-          : { caption, imageArr, mentions: remapMentions(caption, mention.tagged) },
+          }
+          const r = await uploadImage(f.file);
+          fr[i] = 1;
+          report();
+          return r;
+        }),
       );
-      let post: Post | null = null;
-      if (id) {
-        try {
-          post = await getPost(id);
-        } catch {
-          post = null;
-        }
+      imageArr = batches.flat();
+    }
+    return pollOn
+      ? { caption: '', imageArr: [], mentions: [], poll: { question: caption, options: cleanOpts, durationHours: duration } }
+      : { caption, imageArr, mentions: remapMentions(caption, mention.tagged) };
+  };
+
+  /** Creates the post (boosted when `boost`), then clears the composer and hands the new post to the feed. */
+  const publish = async (body: BoostPostBody, boost: boolean) => {
+    setProgress((p) => (p == null ? null : 0.9));
+    setBusy('Posting…');
+    let id: number | null;
+    let boosted = false;
+    if (boost) {
+      const r = await createBoostedPost(body);
+      id = r.id;
+      boosted = r.boosted;
+    } else id = await createPost(body);
+    let post: Post | null = null;
+    if (id) {
+      try {
+        post = await getPost(id);
+      } catch {
+        post = null;
       }
-      setProgress((p) => (p == null ? null : 1));
-      toast.ok('Post created successfully.');
-      const wasPoll = pollOn;
-      reset();
-      sheet?.onClose();
-      if (post) onCreated(post);
-      else
-        onCreated({
-          statusPostId: id || Date.now(),
-          caption: wasPoll ? '' : caption,
-          createdBy: user?.id || '',
-          createdTime: Math.floor(Date.now() / 1000),
-          imageArr,
-          userDetails: [{ userId: user?.id || '', fullName: user?.name, imageDetails: user?.imageUrl ? { imgLink: user.imageUrl } : undefined }],
-        });
+    }
+    setProgress((p) => (p == null ? null : 1));
+    if (!boost) toast.ok('Post created successfully.');
+    else if (boosted) toast.ok('Post boosted and published!');
+    else toast.error('Post published, but the boost did not apply (no boost credit). It will show as a normal post.');
+    reset();
+    sheet?.onClose();
+    if (post) onCreated(post);
+    else
+      onCreated({
+        statusPostId: id || Date.now(),
+        caption: body.poll ? '' : body.caption,
+        createdBy: user?.id || '',
+        createdTime: Math.floor(Date.now() / 1000),
+        imageArr: body.imageArr,
+        ...(boosted ? { boostedUntil: Math.floor(Date.now() / 1000) + 3 * 24 * 3600 } : {}),
+        userDetails: [{ userId: user?.id || '', fullName: user?.name, imageDetails: user?.imageUrl ? { imgLink: user.imageUrl } : undefined }],
+      });
+  };
+
+  const submit = async () => {
+    if (!validate()) return;
+    try {
+      await publish(await buildBody(), false);
     } catch (e) {
       toast.error(errMsg(e, 'Could not create post. Please try again.'));
+    } finally {
+      setBusy(null);
+      setProgress(null);
+    }
+  };
+
+  /* ---- Boost (HomeScreen.handleBoostPost): use a credit if there is one, otherwise buy a boost first ---- */
+  const [boostOpen, setBoostOpen] = useState(false);
+  /** The uploaded body for the current draft, so paying again after closing the dialog doesn't upload twice. */
+  const prepared = useRef<{ sig: string; body: BoostPostBody } | null>(null);
+  const draftSig = () => JSON.stringify([text.trim(), pollOn, pollOn ? cleanOpts : [], duration, files.map((f) => f.id)]);
+
+  const boost = async () => {
+    if (!validate()) return;
+    setBusy('Checking…');
+    let credits = 0;
+    try {
+      credits = await fetchBoostCredits();
+    } catch {
+      credits = 0;
+    }
+    if (credits < 1) {
+      setBusy(null);
+      setBoostOpen(true);
+      return;
+    }
+    try {
+      await publish(await buildBody(), true);
+    } catch (e) {
+      toast.error(errMsg(e, 'Could not create post. Please try again.'));
+    } finally {
+      setBusy(null);
+      setProgress(null);
+    }
+  };
+
+  /** Before paying: upload the media and save the draft so it survives the Paystack / 3-D Secure redirect. */
+  const prepareBoost = async () => {
+    const sig = draftSig();
+    try {
+      let body = prepared.current?.sig === sig ? prepared.current.body : null;
+      if (!body) {
+        body = await buildBody();
+        prepared.current = { sig, body };
+      }
+      saveBoostDraft({ kind: 'new', body, startedAt: Date.now() });
+      return true;
+    } catch (e) {
+      toast.error(errMsg(e, 'Could not upload your media. Please try again.'));
+      return false;
+    } finally {
+      setBusy(null);
+      setProgress(null);
+    }
+  };
+
+  /** Paid in this page (Stripe) and the credit is on the account: publish the saved draft boosted. */
+  const afterBoostPaid = async () => {
+    setBoostOpen(false);
+    const d = takeBoostDraft();
+    const body = d?.kind === 'new' ? d.body : prepared.current?.body;
+    if (!body) {
+      toast.ok('Boost credit added. Tap Boost to publish your post.');
+      return;
+    }
+    try {
+      await publish(body, true);
+      prepared.current = null;
+    } catch (e) {
+      toast.error(errMsg(e, 'Payment received, but the post could not be published. Tap Boost to try again; your credit is saved.'));
     } finally {
       setBusy(null);
       setProgress(null);
@@ -390,15 +483,26 @@ export function Composer({
     </label>
   );
   const postLabel = busy ? (progress != null ? `${Math.round(progress * 100)}%` : 'Posting…') : 'Post';
+  const boostBtn = (
+    <button type="button" className={'hp-boost-btn' + (canPost ? ' on' : '')} disabled={!canPost} onClick={() => void boost()} aria-label="Boost post">
+      <I name="rocket" size={14} />
+      <span>Boost</span>
+    </button>
+  );
+  const boostModal = (
+    <BoostCheckoutModal open={boostOpen} onClose={() => setBoostOpen(false)} prepare={prepareBoost} onConfirmed={() => void afterBoostPaid()} next="/" />
+  );
 
   if (sheet) {
     return (
+      <>
       <div className={'hp-cps' + (pollOn ? ' poll' : '')} {...dropProps}>
         <div className="hp-cps-head">
           <button type="button" className="hp-cps-close" aria-label="Close create post" disabled={!!busy} onClick={sheet.onClose}>
             <Icon name="close" size={22} />
           </button>
           <div className="hp-cps-title">Create post</div>
+          {boostBtn}
           <button type="button" className="hp-cps-post" disabled={!canPost} onClick={submit}>
             {postLabel}
           </button>
@@ -424,10 +528,13 @@ export function Composer({
           {checking && <span className="tiny muted hp-checking">Checking video…</span>}
         </div>
       </div>
+      {boostModal}
+      </>
     );
   }
 
   return (
+    <>
     <div className={'hp-composer' + (expanded ? ' open' : '') + (keep ? ' keep' : '')} {...dropProps}>
       <div className="hp-composer-top">
         <Avatar src={user?.imageUrl} name={user?.name} size={42} />
@@ -446,10 +553,13 @@ export function Composer({
           {pollTool}
         </div>
         {checking && <span className="tiny muted hp-checking">Checking video…</span>}
+        {boostBtn}
         <button type="button" className="btn btn-sm hp-post-btn" disabled={!canPost} onClick={submit}>
           {postLabel}
         </button>
       </div>
     </div>
+    {boostModal}
+    </>
   );
 }

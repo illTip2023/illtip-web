@@ -17,7 +17,7 @@ export const BASE = (() => {
 
 export const href = (to: string) => BASE + (to.startsWith('/') ? to : '/' + to);
 
-function currentPath() {
+export function currentPath() {
   let p = location.pathname;
   if (BASE && p.startsWith(BASE)) p = p.slice(BASE.length);
   if (!p.startsWith('/')) p = '/' + p;

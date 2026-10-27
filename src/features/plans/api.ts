@@ -142,6 +142,10 @@ export async function createCheckout(planId: string, email: string | undefined, 
 
 const sleep = (ms: number) => new Promise<void>((r) => setTimeout(r, ms));
 
+export function setStatusCache(s: MyStatus) {
+  setQueryData(STATUS_KEY, () => s);
+}
+
 /** Refreshes every query that depends on subscription status / plan upgrade offers. */
 export function refreshSubscriptionQueries(latest?: MyStatus) {
   if (latest) setQueryData(STATUS_KEY, () => latest);
@@ -167,8 +171,14 @@ export async function pollUntilActive(
       if (opts.isCancelled?.()) return { confirmed: false, latest };
       try {
         latest = await fetchStatusStrict();
-        const c = latest[catalog];
-        if (c?.active && (!planId || c.subscription?.planId === planId)) return { confirmed: true, latest };
+        // Boost Post is a one-time credit: an older `flat` grant can still look active after its credit was
+        // spent, so wait for the credit itself (useSubscriptionPurchase in the app does the same).
+        if (planId === 'boost-post') {
+          if ((latest.boostPostCredits ?? 0) >= 1) return { confirmed: true, latest };
+        } else {
+          const c = latest[catalog];
+          if (c?.active && (!planId || c.subscription?.planId === planId)) return { confirmed: true, latest };
+        }
       } catch {
         /* transient: keep polling */
       }

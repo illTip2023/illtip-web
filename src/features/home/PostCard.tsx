@@ -1,7 +1,7 @@
 import { openWatch } from './ViewerOpen';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AutoVideo } from '../../ui/AutoVideo';
-import { Link, navigate } from '../../lib/router';
+import { currentPath, Link, navigate } from '../../lib/router';
 import { useAuth } from '../../lib/auth';
 import { BuyCoinsFlow, BuyCoinsPrompt, stepTitle as buyStepTitle } from '../coins/BuyCoins';
 import { rainCoins } from '../coins/CoinRain';
@@ -23,6 +23,7 @@ import {
   fetchPoll,
   flagPost,
   isBoosted,
+  isSponsored,
   likePost,
   mediaOf,
   recordView,
@@ -36,6 +37,7 @@ import {
 import { coinStore, patchPost, setSaved, useCoinBalance, usePostPatch, useSavedIds } from './store';
 import { ComboTipButton } from './ComboTip';
 import { CommentSheet } from './CommentSheet';
+import { BoostCheckoutModal, boostExistingPost, fetchBoostCredits, isNoBoostCreditError, saveBoostDraft, takeBoostDraft } from '../plans/boost';
 
 /* ---------------- caption ---------------- */
 
@@ -653,7 +655,12 @@ export function PostCard({ post, detail, onDeleted, onCommentClick }: { post: Po
   const comments = patch.comments ?? (post.commentArr?.length || 0);
   const caption = patch.caption ?? post.caption ?? '';
   const isSaved = saved.loaded ? saved.ids.has(id) : !!post.isSaved;
-  const boosted = isBoosted(post);
+  const boostedUntil = patch.boostedUntil ?? post.boostedUntil;
+  const boosted = isBoosted({ ...post, boostedUntil });
+  const everBoosted = Number(boostedUntil) > 0;
+  const canBoost = isOwn && !isSponsored(post);
+  const [boostOpen, setBoostOpen] = useState(false);
+  const [boostBusy, setBoostBusy] = useState(false);
   const [editOpen, setEditOpen] = useState(false);
   const [lightbox, setLightbox] = useState<number | null>(null);
   const [likeBusy, setLikeBusy] = useState(false);
@@ -729,8 +736,37 @@ export function PostCard({ post, detail, onDeleted, onCommentClick }: { post: Po
     (await copyText(url)) ? toast.ok('Link copied to clipboard.') : toast.error('Could not copy link.');
   };
 
+  /** ProfileScreen "Boost post" / "Boost again": spend a credit if there is one, otherwise buy a boost first. */
+  const boostThis = async (afterPurchase = false) => {
+    if (boostBusy) return;
+    setBoostBusy(true);
+    try {
+      if (!afterPurchase) {
+        let credits = 0;
+        try {
+          credits = await fetchBoostCredits();
+        } catch {
+          credits = 0;
+        }
+        if (credits < 1) {
+          setBoostOpen(true);
+          return;
+        }
+      }
+      const until = await boostExistingPost(id);
+      patchPost(id, { boostedUntil: until ?? Math.floor(Date.now() / 1000) + 3 * 24 * 3600 });
+      toast.ok('Post boosted for 3 days!');
+    } catch (e: any) {
+      if (isNoBoostCreditError(e)) setBoostOpen(true);
+      else toast.error(errMsg(e, 'Could not boost this post. Please try again.'));
+    } finally {
+      setBoostBusy(false);
+    }
+  };
+
   const menu = [
     { label: 'Copy link', icon: <I name="link" size={18} />, onClick: share },
+    ...(canBoost ? [{ label: everBoosted ? 'Boost again' : 'Boost post', icon: <I name="rocket" size={18} />, onClick: () => void boostThis() }] : []),
     ...(isOwn
       ? [
           { label: 'Edit post', icon: <I name="edit" size={18} />, onClick: () => setEditOpen(true) },
@@ -774,6 +810,22 @@ export function PostCard({ post, detail, onDeleted, onCommentClick }: { post: Po
   return (
     <article className="hp-card" ref={ref}>
       {boosted && <div className="hp-boosted">Boosted Post 🚀</div>}
+      {canBoost && boostOpen && (
+        <BoostCheckoutModal
+          open
+          onClose={() => setBoostOpen(false)}
+          prepare={async () => {
+            saveBoostDraft({ kind: 'existing', statusPostId: id, startedAt: Date.now() });
+            return true;
+          }}
+          onConfirmed={() => {
+            setBoostOpen(false);
+            takeBoostDraft();
+            void boostThis(true);
+          }}
+          next={currentPath()}
+        />
+      )}
       <header className="hp-head">
         <Link to={`/u/${encodeURIComponent(author.userId)}`} className="hp-avatar-link">
           <Avatar src={author.avatar} name={author.name} size={44} />
