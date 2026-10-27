@@ -239,3 +239,9 @@ button.hp-act:focus:not(:focus-visible) { outline: none; }
 .hs-person + .hs-person { border-top: 1px solid var(--line); }
 @media (hover: hover) { .hs-person:hover { background: var(--hp-soft, rgba(0,0,0,.04)); } }
 .hs-person .hp-chev { transform: rotate(180deg); color: var(--muted); display: inline-flex; }
+
+/* Home has its own app-style header on phones (features/home/HomeFeed.tsx), so the global top bar is hidden there. */
+@media (max-width: 860px) {
+  .shell-home .topbar { display: none; }
+  .shell-home .content { padding-top: 0; }
+}

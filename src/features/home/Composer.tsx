@@ -15,7 +15,22 @@ const isVideoFile = (f: File) => f.type.startsWith('video/') || (!f.type && /\.(
 const isImageFile = (f: File) => f.type.startsWith('image/') || (!f.type && /\.(jpe?g|png|gif|webp|heic|heif)$/i.test(f.name));
 const fmtDur = (s?: number | null) => (s && Number.isFinite(s) ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}` : '');
 
-export function Composer({ onCreated }: { onCreated: (p: Post) => void }) {
+/**
+ * Post composer. Inline (Profile page) by default; `sheet` renders the app's CreatePostModal layout
+ * (close · "Create post" · Post header, author row, big text box, Poll / Photo / Video bar at the bottom).
+ * `pick` hands it files chosen before the sheet opened (the image icon on Home's "Write something here..." pill).
+ */
+export function Composer({
+  onCreated,
+  sheet,
+  pick,
+  autoFocusKey,
+}: {
+  onCreated: (p: Post) => void;
+  sheet?: { onClose: () => void; onBusyChange?: (busy: boolean) => void };
+  pick?: { files: File[]; n: number } | null;
+  autoFocusKey?: number;
+}) {
   const { user } = useAuth();
   const [text, setText] = useState('');
   const [files, setFiles] = useState<Att[]>([]);
@@ -34,13 +49,34 @@ export function Composer({ onCreated }: { onCreated: (p: Post) => void }) {
 
   useEffect(() => () => filesRef.current.forEach((f) => URL.revokeObjectURL(f.url)), []);
 
+  // Sheet: files picked from the Home pill's image icon before the sheet opened.
+  const lastPick = useRef(0);
+  useEffect(() => {
+    if (!pick || pick.n === lastPick.current) return;
+    lastPick.current = pick.n;
+    void addFiles(pick.files);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pick]);
+  // Sheet: focus the text box each time it opens.
+  useEffect(() => {
+    if (!sheet || !autoFocusKey) return;
+    const t = setTimeout(() => taRef.current?.focus({ preventScroll: true }), 60);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoFocusKey]);
+  useEffect(() => {
+    sheet?.onBusyChange?.(!!busy);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [busy]);
+
   // auto-grow textarea
   useEffect(() => {
     const ta = taRef.current;
     if (!ta) return;
     ta.style.height = 'auto';
+    if (sheet) return; // the sheet's text box keeps its own size and the body scrolls
     ta.style.height = Math.min(320, ta.scrollHeight) + 'px';
-  }, [text]);
+  }, [text, sheet]);
 
   const addFiles = async (list: FileList | File[] | null) => {
     if (!list) return;
@@ -185,6 +221,7 @@ export function Composer({ onCreated }: { onCreated: (p: Post) => void }) {
       toast.ok('Post created successfully.');
       const wasPoll = pollOn;
       reset();
+      sheet?.onClose();
       if (post) onCreated(post);
       else
         onCreated({
@@ -220,142 +257,197 @@ export function Composer({ onCreated }: { onCreated: (p: Post) => void }) {
     void addFiles(fl);
   };
 
-  return (
-    <div
-      className={'hp-composer' + (expanded ? ' open' : '') + (keep ? ' keep' : '')}
-      onDragOver={(e) => e.preventDefault()}
-      onDrop={(e) => {
-        e.preventDefault();
-        void addFiles(e.dataTransfer.files);
+  const dropProps = {
+    onDragOver: (e: { preventDefault(): void; dataTransfer: DataTransfer }) => e.preventDefault(),
+    onDrop: (e: { preventDefault(): void; dataTransfer: DataTransfer }) => {
+      e.preventDefault();
+      void addFiles(e.dataTransfer.files);
+    },
+  };
+
+  const textarea = (
+    <textarea
+      ref={taRef}
+      className={sheet ? 'hp-cps-input' : 'hp-composer-input'}
+      rows={sheet ? 5 : expanded ? 3 : 1}
+      placeholder={pollOn ? 'Ask a question…' : sheet ? 'Create a post… Tag people with @ or add #hashtags' : 'Create a post… add #hashtags'}
+      aria-label={pollOn ? 'Poll question' : 'Create a post'}
+      value={text}
+      disabled={!!busy}
+      onFocus={() => setFocused(true)}
+      onChange={(e) => {
+        setText(e.target.value);
+        if (!pollOn) mention.detect(e.target.value, e.target.selectionStart ?? e.target.value.length);
       }}
-    >
+      onBlur={() => setTimeout(mention.close, 200)}
+      onPaste={(e) => {
+        const fs = Array.from(e.clipboardData.files || []) as File[];
+        if (fs.length) {
+          e.preventDefault();
+          void addFiles(fs);
+        }
+      }}
+      onKeyDown={(e) => {
+        if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') submit();
+      }}
+    />
+  );
+
+  const thumbs = files.length > 0 && (
+    <div className="hp-thumbs">
+      {files.map((f) => (
+        <div className={'hp-thumb' + (f.kind === 'video' ? ' hp-thumb-video' : '')} key={f.id}>
+          {f.kind === 'video' ? (
+            <>
+              <video src={f.url + '#t=0.1'} muted playsInline preload="metadata" />
+              <span className="hp-thumb-badge">
+                <I name="video" size={12} /> {fmtDur(f.seconds) || 'Video'}
+              </span>
+            </>
+          ) : (
+            <img src={f.url} alt="" />
+          )}
+          <button type="button" aria-label={f.kind === 'video' ? 'Remove video' : 'Remove image'} onClick={() => removeFile(f.id)} disabled={!!busy}>
+            <Icon name="close" size={14} />
+          </button>
+        </div>
+      ))}
+    </div>
+  );
+
+  const pollEdit = pollOn && (
+    <div className="hp-poll-edit">
+      <div className="hp-poll-head">
+        <b className="small">Poll options</b>
+        <span className={'tiny ' + (qLen > POLL_MAX ? 'hp-err' : 'muted')}>
+          Question {qLen}/{POLL_MAX}
+        </span>
+      </div>
+      {options.map((o, i) => (
+        <div className="hp-pe-opt" key={i}>
+          <input
+            className="input"
+            placeholder={`Option ${i + 1}`}
+            aria-label={`Option ${i + 1}`}
+            maxLength={80}
+            value={o}
+            disabled={!!busy}
+            onChange={(e) => setOptions((prev) => prev.map((x, j) => (j === i ? e.target.value : x)))}
+          />
+          {options.length > 2 && (
+            <button type="button" className="icon-btn" aria-label={`Remove option ${i + 1}`} disabled={!!busy} onClick={() => setOptions((prev) => prev.filter((_, j) => j !== i))}>
+              <Icon name="close" size={18} />
+            </button>
+          )}
+        </div>
+      ))}
+      {options.length < 4 && (
+        <button type="button" className="btn btn-ghost btn-sm hp-poll-add" disabled={!!busy} onClick={() => setOptions((p) => [...p, ''])}>
+          <Icon name="plus" size={16} /> Add option
+        </button>
+      )}
+      <div className="hp-poll-dur">
+        <span className="muted small">Poll length</span>
+        <div className="hp-poll-dur-chips" role="radiogroup" aria-label="Poll length">
+          {DURATIONS.map((d) => (
+            <button type="button" key={d} role="radio" aria-checked={duration === d} className={'chip' + (duration === d ? ' active' : '')} disabled={!!busy} onClick={() => setDuration(d)}>
+              {d}h
+            </button>
+          ))}
+        </div>
+      </div>
+      {!optsUnique && <div className="tiny hp-err">Poll options must be different.</div>}
+    </div>
+  );
+
+  const progressBar = progress != null && (
+    <div className="hp-upload" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)} aria-label="Upload progress">
+      <div className="hp-upload-track">
+        <div className="hp-upload-fill" style={{ width: `${Math.max(3, Math.round(progress * 100))}%` }} />
+      </div>
+      <span className="tiny muted">{busy}</span>
+    </div>
+  );
+
+  const pollTool = (
+    <button type="button" key="poll" className={'hp-tool hp-tool-poll' + (pollOn ? ' on' : '')} disabled={!!busy} onClick={togglePoll} title={pollOn ? 'Remove poll' : 'Poll'} aria-label={pollOn ? 'Remove poll' : 'Poll'} aria-pressed={pollOn}>
+      <I name="poll" size={20} />
+      <span>Poll</span>
+    </button>
+  );
+  const photoTool = (
+    <label key="photo" className={'hp-tool hp-tool-photo' + (mediaDisabled ? ' disabled' : '')} title="Add photos" aria-disabled={mediaDisabled}>
+      <input className="hp-file" type="file" accept="image/*" multiple disabled={mediaDisabled} onChange={onPick} aria-label="Add photos" />
+      <Icon name="image" size={20} />
+      <span>Photo</span>
+    </label>
+  );
+  const videoTool = (
+    <label key="video" className={'hp-tool hp-tool-video' + (mediaDisabled ? ' disabled' : '')} title="Add a video" aria-disabled={mediaDisabled}>
+      <input className="hp-file" type="file" accept="video/*" disabled={mediaDisabled} onChange={onPick} aria-label="Add a video" />
+      <I name="video" size={20} />
+      <span>Video</span>
+    </label>
+  );
+  const postLabel = busy ? (progress != null ? `${Math.round(progress * 100)}%` : 'Posting…') : 'Post';
+
+  if (sheet) {
+    return (
+      <div className={'hp-cps' + (pollOn ? ' poll' : '')} {...dropProps}>
+        <div className="hp-cps-head">
+          <button type="button" className="hp-cps-close" aria-label="Close create post" disabled={!!busy} onClick={sheet.onClose}>
+            <Icon name="close" size={22} />
+          </button>
+          <div className="hp-cps-title">Create post</div>
+          <button type="button" className="hp-cps-post" disabled={!canPost} onClick={submit}>
+            {postLabel}
+          </button>
+        </div>
+        <div className="hp-cps-body">
+          <div className="hp-cps-user">
+            <Avatar src={user?.imageUrl} name={user?.name} size={44} />
+            <div className="hp-cps-who">
+              <div className="hp-cps-name">{user?.name || 'You'}</div>
+              <div className="hp-cps-sub">You</div>
+            </div>
+          </div>
+          {textarea}
+          {!pollOn && mention.list}
+          {pollEdit}
+          {!pollOn && thumbs}
+          {progressBar}
+        </div>
+        <div className="hp-cps-bar">
+          {pollTool}
+          {photoTool}
+          {videoTool}
+          {checking && <span className="tiny muted hp-checking">Checking video…</span>}
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className={'hp-composer' + (expanded ? ' open' : '') + (keep ? ' keep' : '')} {...dropProps}>
       <div className="hp-composer-top">
         <Avatar src={user?.imageUrl} name={user?.name} size={42} />
-        <textarea
-          ref={taRef}
-          className="hp-composer-input"
-          rows={expanded ? 3 : 1}
-          placeholder={pollOn ? 'Ask a question…' : 'Create a post… add #hashtags'}
-          aria-label={pollOn ? 'Poll question' : 'Create a post'}
-          value={text}
-          disabled={!!busy}
-          onFocus={() => setFocused(true)}
-          onChange={(e) => {
-            setText(e.target.value);
-            if (!pollOn) mention.detect(e.target.value, e.target.selectionStart ?? e.target.value.length);
-          }}
-          onBlur={() => setTimeout(mention.close, 200)}
-          onPaste={(e) => {
-            const fs = Array.from(e.clipboardData.files || []) as File[];
-            if (fs.length) {
-              e.preventDefault();
-              void addFiles(fs);
-            }
-          }}
-          onKeyDown={(e) => {
-            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') submit();
-          }}
-        />
+        {textarea}
       </div>
 
       {!pollOn && mention.list}
-
-      {files.length > 0 && (
-        <div className="hp-thumbs">
-          {files.map((f) => (
-            <div className={'hp-thumb' + (f.kind === 'video' ? ' hp-thumb-video' : '')} key={f.id}>
-              {f.kind === 'video' ? (
-                <>
-                  <video src={f.url + '#t=0.1'} muted playsInline preload="metadata" />
-                  <span className="hp-thumb-badge">
-                    <I name="video" size={12} /> {fmtDur(f.seconds) || 'Video'}
-                  </span>
-                </>
-              ) : (
-                <img src={f.url} alt="" />
-              )}
-              <button type="button" aria-label={f.kind === 'video' ? 'Remove video' : 'Remove image'} onClick={() => removeFile(f.id)} disabled={!!busy}>
-                <Icon name="close" size={14} />
-              </button>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {pollOn && (
-        <div className="hp-poll-edit">
-          <div className="hp-poll-head">
-            <b className="small">Poll options</b>
-            <span className={'tiny ' + (qLen > POLL_MAX ? 'hp-err' : 'muted')}>
-              Question {qLen}/{POLL_MAX}
-            </span>
-          </div>
-          {options.map((o, i) => (
-            <div className="hp-pe-opt" key={i}>
-              <input
-                className="input"
-                placeholder={`Option ${i + 1}`}
-                aria-label={`Option ${i + 1}`}
-                maxLength={80}
-                value={o}
-                disabled={!!busy}
-                onChange={(e) => setOptions((prev) => prev.map((x, j) => (j === i ? e.target.value : x)))}
-              />
-              {options.length > 2 && (
-                <button type="button" className="icon-btn" aria-label={`Remove option ${i + 1}`} disabled={!!busy} onClick={() => setOptions((prev) => prev.filter((_, j) => j !== i))}>
-                  <Icon name="close" size={18} />
-                </button>
-              )}
-            </div>
-          ))}
-          {options.length < 4 && (
-            <button type="button" className="btn btn-ghost btn-sm hp-poll-add" disabled={!!busy} onClick={() => setOptions((p) => [...p, ''])}>
-              <Icon name="plus" size={16} /> Add option
-            </button>
-          )}
-          <div className="hp-poll-dur">
-            <span className="muted small">Poll length</span>
-            <div className="hp-poll-dur-chips" role="radiogroup" aria-label="Poll length">
-              {DURATIONS.map((d) => (
-                <button type="button" key={d} role="radio" aria-checked={duration === d} className={'chip' + (duration === d ? ' active' : '')} disabled={!!busy} onClick={() => setDuration(d)}>
-                  {d}h
-                </button>
-              ))}
-            </div>
-          </div>
-          {!optsUnique && <div className="tiny hp-err">Poll options must be different.</div>}
-        </div>
-      )}
-
-      {progress != null && (
-        <div className="hp-upload" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)} aria-label="Upload progress">
-          <div className="hp-upload-track">
-            <div className="hp-upload-fill" style={{ width: `${Math.max(3, Math.round(progress * 100))}%` }} />
-          </div>
-          <span className="tiny muted">{busy}</span>
-        </div>
-      )}
+      {thumbs}
+      {pollEdit}
+      {progressBar}
 
       <div className="hp-composer-bar">
         <div className="hp-tools">
-          <label className={'hp-tool hp-tool-photo' + (mediaDisabled ? ' disabled' : '')} title="Add photos" aria-disabled={mediaDisabled}>
-            <input className="hp-file" type="file" accept="image/*" multiple disabled={mediaDisabled} onChange={onPick} aria-label="Add photos" />
-            <Icon name="image" size={20} />
-            <span>Photo</span>
-          </label>
-          <label className={'hp-tool hp-tool-video' + (mediaDisabled ? ' disabled' : '')} title="Add a video" aria-disabled={mediaDisabled}>
-            <input className="hp-file" type="file" accept="video/*" disabled={mediaDisabled} onChange={onPick} aria-label="Add a video" />
-            <I name="video" size={20} />
-            <span>Video</span>
-          </label>
-          <button type="button" className={'hp-tool hp-tool-poll' + (pollOn ? ' on' : '')} disabled={!!busy} onClick={togglePoll} title={pollOn ? 'Remove poll' : 'Poll'} aria-label={pollOn ? 'Remove poll' : 'Poll'} aria-pressed={pollOn}>
-            <I name="poll" size={20} />
-            <span>Poll</span>
-          </button>
+          {photoTool}
+          {videoTool}
+          {pollTool}
         </div>
         {checking && <span className="tiny muted hp-checking">Checking video…</span>}
         <button type="button" className="btn btn-sm hp-post-btn" disabled={!canPost} onClick={submit}>
-          {busy ? (progress != null ? `${Math.round(progress * 100)}%` : 'Posting…') : 'Post'}
+          {postLabel}
         </button>
       </div>
     </div>

@@ -6,7 +6,9 @@ import { useAuth } from '../../lib/auth';
 import { BuyCoinsFlow, BuyCoinsPrompt, stepTitle as buyStepTitle } from '../coins/BuyCoins';
 import { rainCoins } from '../coins/CoinRain';
 import { setQueryData, invalidate, useQuery } from '../../lib/query';
-import { Avatar, Icon, Modal, compactNumber, timeAgo, toast } from '../../ui/kit';
+import { Avatar, Icon, Modal, compactNumber, toast } from '../../ui/kit';
+import { followUser, unfollowUser } from '../profile/api';
+import { api } from '../../lib/api';
 import { I } from './icons';
 import {
   authorOf,
@@ -108,7 +110,8 @@ export function RichText({ text, mentions, links }: { text: string; mentions?: M
 }
 
 function Caption({ post, text, full, onOpen }: { post: Post; text: string; full?: boolean; onOpen?: () => void }) {
-  const long = text.length > 320 || text.split('\n').length > 6;
+  // App (ProfileCard ExpandableCaption): 5 lines, then "... show more" / "Show less".
+  const long = text.length > 260 || text.split('\n').length > 5;
   const [open, setOpen] = useState(!!full);
   if (!text.trim()) return null;
   return (
@@ -130,7 +133,7 @@ function Caption({ post, text, full, onOpen }: { post: Post; text: string; full?
             setOpen((v) => !v);
           }}
         >
-          {open ? 'Show less' : 'Show more'}
+          {open ? 'Show less' : '... show more'}
         </button>
       )}
     </div>
@@ -508,6 +511,133 @@ export async function copyText(text: string) {
   }
 }
 
+/* ---------------- time ("3 days ago", like the app's date-fns formatDistanceToNow(..., { addSuffix: true })) ---------------- */
+
+export function distanceToNow(ms: number, now = Date.now()): string {
+  if (!ms || !Number.isFinite(ms)) return '';
+  const future = ms > now;
+  const a = new Date(Math.min(ms, now));
+  const b = new Date(Math.max(ms, now));
+  const minutes = Math.round((b.getTime() - a.getTime()) / 60000);
+  const plural = (n: number, one: string, many: string) => (n === 1 ? one : many.replace('{n}', String(n)));
+  let out: string;
+  if (minutes < 2) out = minutes === 0 ? 'less than a minute' : '1 minute';
+  else if (minutes < 45) out = `${minutes} minutes`;
+  else if (minutes < 90) out = 'about 1 hour';
+  else if (minutes < 1440) out = `about ${Math.round(minutes / 60)} hours`;
+  else if (minutes < 2520) out = '1 day';
+  else if (minutes < 43200) out = `${Math.round(minutes / 1440)} days`;
+  else if (minutes < 86400) out = plural(Math.round(minutes / 43200), 'about 1 month', 'about {n} months');
+  else {
+    let months = (b.getFullYear() - a.getFullYear()) * 12 + (b.getMonth() - a.getMonth());
+    const shifted = new Date(a.getTime());
+    shifted.setMonth(a.getMonth() + months);
+    if (shifted.getTime() > b.getTime()) months -= 1;
+    if (months < 12) out = plural(Math.round(minutes / 43200), '1 month', '{n} months');
+    else {
+      const years = Math.floor(months / 12);
+      const rest = months % 12;
+      if (rest < 3) out = plural(years, 'about 1 year', 'about {n} years');
+      else if (rest < 9) out = plural(years, 'over 1 year', 'over {n} years');
+      else out = `almost ${years + 1} years`;
+    }
+  }
+  return future ? `in ${out}` : `${out} ago`;
+}
+
+/* ---------------- "Network" on the author (app ProfileCard: one shared GET /network/following for the feed) ---------------- */
+
+const followingKey = (me: string) => `home:following:${me}`;
+let followingInflight: Record<string, Promise<string[]> | undefined> = {};
+function fetchFollowingIds(me: string): Promise<string[]> {
+  if (!followingInflight[me]) {
+    followingInflight[me] = api
+      .get('/network/following', { params: { userId: me } })
+      .then(({ data }) => (Array.isArray(data?.data) ? data.data : []).map((r: any) => String(r?.userId ?? '')).filter(Boolean))
+      .finally(() => {
+        followingInflight[me] = undefined;
+      });
+  }
+  return followingInflight[me]!;
+}
+
+function NetworkButton({ me, userId, name }: { me: string; userId: string; name: string }) {
+  const q = useQuery(followingKey(me), () => fetchFollowingIds(me), { staleMs: 60_000 });
+  const [override, setOverride] = useState<boolean | null>(null);
+  const [pending, setPending] = useState(false);
+  const [confirm, setConfirm] = useState(false);
+  const following = override ?? (q.data || []).includes(userId);
+  const run = async (next: boolean) => {
+    setPending(true);
+    setOverride(next);
+    try {
+      await (next ? followUser(userId) : unfollowUser(userId));
+      setQueryData(followingKey(me), (old: string[] | undefined) => {
+        const set = new Set(old || []);
+        if (next) set.add(userId);
+        else set.delete(userId);
+        return [...set];
+      });
+      invalidate(`net:state:${userId}`);
+      setOverride(null);
+    } catch {
+      setOverride(null);
+      toast.error("Couldn't update your network. Please try again.");
+    } finally {
+      setPending(false);
+    }
+  };
+  return (
+    <>
+      <button
+        type="button"
+        className={'hp-net' + (following ? ' on' : '')}
+        disabled={pending}
+        aria-pressed={following}
+        onClick={() => (following ? setConfirm(true) : run(true))}
+      >
+        {pending ? '...' : following ? 'Networking' : 'Network'}
+      </button>
+      {confirm && (
+        <Modal open={confirm} onClose={() => setConfirm(false)} title="Remove from network">
+          <p style={{ marginTop: 0 }}>Remove {name} from your network?</p>
+          <div className="row" style={{ justifyContent: 'flex-end' }}>
+            <button className="btn btn-ghost" onClick={() => setConfirm(false)}>
+              Cancel
+            </button>
+            <button
+              className="btn btn-danger"
+              onClick={() => {
+                setConfirm(false);
+                void run(false);
+              }}
+            >
+              Remove
+            </button>
+          </div>
+        </Modal>
+      )}
+    </>
+  );
+}
+
+/* ---------------- action-row glyphs (the app's FontAwesome solid icons) ---------------- */
+
+const ACT: Record<string, string> = {
+  eye: 'M12 5C6.6 5 2.9 9.2 1.5 12c1.4 2.8 5.1 7 10.5 7s9.1-4.2 10.5-7C21.1 9.2 17.4 5 12 5zm0 11.8a4.8 4.8 0 1 1 0-9.6 4.8 4.8 0 0 1 0 9.6zm0-7.3a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5z',
+  heart: 'M12 21s-7.6-4.6-9.9-9.2C.5 8.4 2.4 4 6.6 4c2.3 0 3.8 1.3 5.4 3.1C13.6 5.3 15.1 4 17.4 4c4.2 0 6.1 4.4 4.5 7.8C19.6 16.4 12 21 12 21z',
+  comment: 'M12 3C6.2 3 1.5 6.8 1.5 11.5c0 2.2 1 4.2 2.7 5.7-.3 1.6-1.2 3.1-2.5 4.1 2.4 0 4.6-.8 6.2-2 1.3.4 2.7.6 4.1.6 5.8 0 10.5-3.8 10.5-8.4S17.8 3 12 3z',
+  bookmark: 'M5.5 2h13A1.5 1.5 0 0 1 20 3.5V22l-8-4.9L4 22V3.5A1.5 1.5 0 0 1 5.5 2z',
+  share: 'M22 10.5 14 3v4.4C6.6 8.2 2.6 13.4 2 20.5c2.6-3.6 6.3-5.3 12-5.4V19.6z',
+};
+function ActIcon({ name }: { name: keyof typeof ACT }) {
+  return (
+    <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" fillRule="evenodd" aria-hidden>
+      <path d={ACT[name]} />
+    </svg>
+  );
+}
+
 /* ---------------- card ---------------- */
 
 export function PostCard({ post, detail, onDeleted, onCommentClick }: { post: Post; detail?: boolean; onDeleted?: () => void; onCommentClick?: () => void }) {
@@ -646,22 +776,25 @@ export function PostCard({ post, detail, onDeleted, onCommentClick }: { post: Po
         <Link to={`/u/${encodeURIComponent(author.userId)}`} className="hp-avatar-link">
           <Avatar src={author.avatar} name={author.name} size={44} />
         </Link>
-        <div className="grow">
-          <div className="row" style={{ gap: 6 }}>
+        <div className="hp-who">
+          <div className="hp-name-row">
             <Link to={`/u/${encodeURIComponent(author.userId)}`} className="hp-name ellipsis">
               {author.name}
             </Link>
             {author.verified && (
               <span className="hp-verified" title="Subscriber badge">
-                <Icon name="check" size={10} />
+                <Icon name="check" size={9} />
               </span>
             )}
           </div>
           <Link to={`/post/${id}`} className="hp-time">
-            {timeAgo(epochMs(post.createdTime))}
+            {distanceToNow(epochMs(post.createdTime))}
           </Link>
         </div>
-        <PostMenu items={menu} />
+        <div className="hp-head-right">
+          {user && author.userId && !isOwn && <NetworkButton me={String(user.id)} userId={author.userId} name={author.name} />}
+          <PostMenu items={menu} />
+        </div>
       </header>
 
       <PostMedia post={post} onOpenImage={detail ? (i) => setLightbox(i) : open ? () => open() : undefined} onOpenPost={detail ? undefined : () => openWatch(post)} />
@@ -669,31 +802,42 @@ export function PostCard({ post, detail, onDeleted, onCommentClick }: { post: Po
       <PollCard post={post} />
 
       <footer className="hp-actions">
-        {hasViews && (
-          <span className="hp-act static" title="Views">
-            <Icon name="eye" size={20} /> {compactNumber(post.viewCount)}
+        <span className="hp-pill on" title="Views">
+          <span className="hp-pill-ic">
+            <ActIcon name="eye" />
           </span>
-        )}
-        <button className={'hp-act' + (liked ? ' liked' : '')} onClick={toggleLike} aria-pressed={liked} aria-label={liked ? 'Unlike post' : 'Like post'}>
-          <Icon name="heart" size={20} fill={liked} /> {compactNumber(likeCount)}
+          <span className="hp-pill-n">{compactNumber(hasViews ? post.viewCount : 0)}</span>
+        </span>
+        <button className={'hp-pill hp-act-like' + (liked ? ' liked' : '')} onClick={toggleLike} aria-pressed={liked} aria-label={liked ? 'Unlike post' : 'Like post'}>
+          <span className="hp-pill-ic">
+            <ActIcon name="heart" />
+          </span>
+          <span className="hp-pill-n">{compactNumber(likeCount)}</span>
         </button>
         <button
-          className="hp-act"
+          className="hp-pill"
           aria-label="Comments"
           onClick={() => {
             if (onCommentClick) onCommentClick();
             else navigate(`/post/${id}?comment=1`);
           }}
         >
-          <Icon name="comment" size={20} /> {compactNumber(comments)}
+          <span className="hp-pill-ic">
+            <ActIcon name="comment" />
+          </span>
+          <span className="hp-pill-n">{compactNumber(comments)}</span>
         </button>
-        <button className={'hp-act' + (isSaved ? ' saved' : '')} onClick={toggleSave} aria-pressed={isSaved} aria-label={isSaved ? 'Unsave post' : 'Save post'}>
-          <Icon name="bookmark" size={20} fill={isSaved} />
+        <button className={'hp-pill' + (isSaved ? ' on' : '')} onClick={toggleSave} aria-pressed={isSaved} aria-label={isSaved ? 'Unsave post' : 'Save post'}>
+          <span className="hp-pill-ic">
+            <ActIcon name="bookmark" />
+          </span>
+          <span className="hp-pill-n">{isSaved ? 1 : 0}</span>
         </button>
-        <button className="hp-act" onClick={share} aria-label="Share post (copy link)">
-          <Icon name="share" size={20} />
+        <button className="hp-pill on" onClick={share} aria-label="Share post (copy link)">
+          <span className="hp-pill-ic">
+            <ActIcon name="share" />
+          </span>
         </button>
-        <span className="grow" />
         <ComboTipButton post={post} hideTipIcon={isOwn} />
       </footer>
 

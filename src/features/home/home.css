@@ -211,11 +211,6 @@ button.hp-tip:hover { filter: brightness(0.97); box-shadow: inset 0 0 0 1px rgba
 .hp-mention-opt:hover, .hp-mention-opt:focus { background: var(--bg); }
 @media (max-width: 600px) { .hp-mentions { margin-left: 0; } }
 
-/* Home header + composer: sticky, hides on scroll down, returns on scroll up (like the app) */
-.hp-feedhead { position: sticky; z-index: 15; background: var(--bg); padding-top: 6px; margin-top: -6px; transition: transform .22s ease, opacity .22s ease; will-change: transform; }
-.hp-feedhead.hidden { transform: translateY(calc(-100% - 70px)); opacity: 0; pointer-events: none; }
-.hp-feedhead .hp-composer { margin-bottom: 12px; }
-
 /* ===== BEGIN composer media/poll + comment rows (iPhone fixes) ===== */
 /* Composer tools: Photo / Video are <label>s around a visually-hidden file input (iOS ignores clicks on display:none inputs). */
 .hp-composer .hp-composer-bar { gap: 8px; flex-wrap: nowrap; min-width: 0; }
@@ -231,8 +226,6 @@ button.hp-tip:hover { filter: brightness(0.97); box-shadow: inset 0 0 0 1px rgba
 .hp-file { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); border: 0; white-space: nowrap; opacity: 0; }
 .hp-composer .hp-post-btn { flex: none; }
 .hp-composer .hp-checking { flex: none; }
-/* while there's a draft, the sticky Home header must not slide away (it took taps away on iPhone) */
-.hp-feedhead.hidden:has(.hp-composer.keep) { transform: none; opacity: 1; pointer-events: auto; }
 
 .hp-thumb-video video { width: 100%; height: 100%; object-fit: cover; display: block; background: #111; pointer-events: none; }
 .hp-thumb-badge { position: absolute; left: 4px; bottom: 4px; display: inline-flex; align-items: center; gap: 3px; background: rgba(0, 0, 0, 0.65); color: #fff; font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 999px; }
@@ -299,3 +292,177 @@ a.hp-cm-name:hover { text-decoration: underline; }
   .hp-cm-box .hp-mentions { margin-left: 0; }
 }
 /* ===== END composer media/poll + comment rows ===== */
+
+/* ===== Home screen like the app (HomeScreen + HeaderUI + ProfileCard + CreatePostModal) ===== */
+:root {
+  --hp-head-bg: #f3f4f6;
+  --hp-head-ink: #262525;
+  --hp-title-ink: #111827;
+  --hp-logo-bg: #f9fafb;
+  --hp-write-bg: #e8e8ea;
+  --hp-write-ph: #6b7280;
+  --hp-write-ic: #7a7d85;
+  --hp-badge-blue: #4f8dff;
+  --hp-accent: #5a99f4;
+  --hp-card-ink2: #6b7280;
+  --hp-eng-border: #f3f4f6;
+  --hp-pill-bg: #f3f4f6;
+  --hp-pill-ic: #9ca3af;
+  --hp-pill-on-bg: #e8f0fe;
+  --hp-like-bg: #fee2e2;
+  --hp-cps-ink: #2c4364;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    --hp-head-bg: var(--bg); --hp-head-ink: #e5e7eb; --hp-title-ink: #fff; --hp-logo-bg: #2a2a32;
+    --hp-write-bg: #2a2a32; --hp-write-ph: #9ca3af; --hp-write-ic: #9ca3af; --hp-card-ink2: #9ca3af;
+    --hp-eng-border: rgba(255, 255, 255, 0.08); --hp-pill-bg: #2a2a32; --hp-pill-on-bg: rgba(90, 153, 244, 0.22);
+    --hp-like-bg: rgba(239, 68, 68, 0.22); --hp-cps-ink: #93c5fd; --hp-getapp-bg: #3f4ff5;
+  }
+}
+:root[data-theme='dark'] {
+  --hp-head-bg: var(--bg); --hp-head-ink: #e5e7eb; --hp-title-ink: #fff; --hp-logo-bg: #2a2a32;
+  --hp-write-bg: #2a2a32; --hp-write-ph: #9ca3af; --hp-write-ic: #9ca3af; --hp-card-ink2: #9ca3af;
+  --hp-eng-border: rgba(255, 255, 255, 0.08); --hp-pill-bg: #2a2a32; --hp-pill-on-bg: rgba(90, 153, 244, 0.22);
+  --hp-like-bg: rgba(239, 68, 68, 0.22); --hp-cps-ink: #93c5fd; --hp-getapp-bg: #3f4ff5;
+}
+
+/* Header + "Write something here..." pill: sticky, slides away on scroll down, back on scroll up */
+.hp-feedhead { position: sticky; z-index: 15; background: var(--hp-head-bg); padding: 12px 16px; margin-bottom: 12px; box-shadow: 0 0 8px rgba(0, 0, 0, 0.14); transition: transform 0.2s ease, opacity 0.2s ease; will-change: transform; }
+.hp-feedhead.hidden { transform: translateY(calc(-100% - 70px)); opacity: 0; pointer-events: none; transition-duration: 0.16s; }
+@media (min-width: 861px) { .hp-feedhead { border-radius: 0 0 18px 18px; margin-top: -18px; } }
+
+.hp-appbar { display: flex; align-items: center; gap: 6px; margin-bottom: 14px; min-width: 0; }
+.hp-appbar-side { display: flex; align-items: center; gap: 6px; min-width: 80px; flex: none; }
+.hp-appbar-side.right { justify-content: flex-end; gap: 0; }
+.hp-logo { width: 40px; height: 40px; border-radius: 50%; overflow: hidden; border: none; padding: 0; background: var(--hp-logo-bg); flex: none; display: block; }
+.hp-logo img { width: 100%; height: 100%; object-fit: contain; display: block; }
+.hp-logo.hp-spin img { animation: spin 0.9s linear infinite; }
+.hp-getapp { background: var(--hp-getapp-bg, #2c4364); color: #fff; font-weight: 700; font-size: 12px; line-height: 1; padding: 7px 10px; border-radius: 999px; white-space: nowrap; flex: none; }
+.hp-appbar-title { flex: 1; min-width: 0; text-align: center; background: none; border: none; padding: 0; color: var(--hp-title-ink); font-size: 20px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; -webkit-tap-highlight-color: transparent; }
+.hp-hbtn { position: relative; width: 36px; height: 40px; display: inline-flex; align-items: center; justify-content: center; color: var(--hp-head-ink); border-radius: 10px; flex: none; -webkit-tap-highlight-color: transparent; }
+.hp-hbtn.hp-bell { width: 40px; }
+@media (hover: hover) { .hp-hbtn:hover { background: rgba(127, 127, 127, 0.12); } }
+.hp-saved-badge { position: absolute; top: 3px; right: -3px; min-width: 18px; height: 18px; border-radius: 9px; background: var(--hp-badge-blue); color: #fff; font-size: 10px; font-weight: 700; line-height: 14px; padding: 0 4px; border: 2px solid var(--hp-head-bg); text-align: center; box-sizing: border-box; }
+.hp-bell-dot { position: absolute; top: 8px; right: 8px; width: 8px; height: 8px; border-radius: 4px; background: var(--hp-badge-blue); }
+
+.hp-write { position: relative; }
+.hp-write-pill { width: 100%; min-height: 62px; border-radius: 24px; border: none; background: var(--hp-write-bg); display: flex; align-items: center; gap: 24px; padding: 0 56px 0 16px; text-align: left; cursor: text; -webkit-tap-highlight-color: transparent; }
+.hp-write-pill .avatar { box-shadow: 0 0 0 1px #d1d5db; }
+.hp-write-ph { flex: 1; min-width: 0; color: var(--hp-write-ph); font-size: 17px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.hp-write-img { position: absolute; right: 8px; top: 50%; transform: translateY(-50%); width: 42px; height: 42px; border-radius: 50%; display: flex; align-items: center; justify-content: center; color: var(--hp-write-ic); cursor: pointer; -webkit-tap-highlight-color: transparent; }
+.hp-write-img:focus-within { outline: 2px solid var(--blue); }
+@media (hover: hover) { .hp-write-img:hover { background: rgba(127, 127, 127, 0.14); } }
+@media (max-width: 360px) { .hp-write-pill { gap: 14px; } .hp-write-ph { font-size: 16px; } }
+
+/* Phones: header and cards run edge to edge like the app (the shell's content padding is 12px) */
+@media (max-width: 860px) {
+  .hp-page { margin: 0 -12px; }
+  .hp-page > .hp-end, .hp-page > .error-box, .hp-page > .empty { margin-left: 12px; margin-right: 12px; }
+}
+
+/* Post card (ProfileCard) */
+.hp-list { gap: 12px; }
+.hp-card { border-radius: 12px; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06); }
+@media (max-width: 860px) { .hp-card { border: none; border-radius: 12px; } }
+.hp-boosted { display: flex; align-items: center; gap: 6px; background: none; border: none; color: #3e50b5; font-size: 13px; padding: 12px 14px 0; margin-bottom: -6px; }
+.hp-head { display: flex; align-items: flex-start; gap: 0; padding: 14px 14px 0; margin-bottom: 10px; }
+.hp-head .hp-avatar-link { margin-right: 12px; flex: none; }
+.hp-who { flex: 1; min-width: 0; margin: 0 8px 0 10px; }
+.hp-name-row { display: flex; align-items: center; gap: 5px; min-width: 0; max-width: 100%; }
+.hp-name { font-size: 16px; font-weight: 600; line-height: 1.35; flex: 0 1 auto; }
+.hp-verified { width: 14px; height: 14px; }
+.hp-time { font-size: 13px; color: var(--hp-card-ink2); margin-top: 0; }
+.hp-head-right { display: flex; align-items: center; gap: 14px; flex: none; padding-left: 8px; min-height: 22px; }
+.hp-net { background: none; border: none; padding: 2px 0; color: var(--hp-accent); font-size: 14px; font-weight: 600; line-height: 1.3; white-space: nowrap; -webkit-tap-highlight-color: transparent; }
+.hp-net:disabled { opacity: 0.7; }
+.hp-head-right .hp-menu > .icon-btn { padding: 0 2px; color: var(--hp-accent); min-height: 22px; }
+.hp-head-right .hp-menu > .icon-btn svg { stroke-width: 4.5; }
+.hp-head-right .hp-menu-pop { top: calc(100% + 8px); }
+.hp-media { border: none; }
+.hp-caption { padding: 0 14px; margin: 8px 0; font-size: 15.5px; line-height: 1.5; color: var(--hp-card-ink2); }
+.hp-media + .hp-caption { padding-top: 0; }
+.hp-clamp { -webkit-line-clamp: 5; }
+.hp-more { display: block; color: var(--hp-card-ink2); font-size: 15px; font-weight: 600; padding: 6px 0 0; }
+.hp-poll { margin: 4px 14px 10px; }
+
+/* Engagement row: soft-tinted circles + counts (ProfileCard EngagementPill), coin pill on the right */
+.hp-actions { display: flex; align-items: center; gap: 8px; padding: 10px 14px 14px; border-top: 1px solid var(--hp-eng-border); min-width: 0; }
+.hp-pill { display: inline-flex; align-items: center; gap: 5px; background: none; border: none; padding: 3px 0; margin: 0; color: var(--hp-pill-ic); font-size: 13px; font-weight: 600; line-height: 1; flex: none; -webkit-tap-highlight-color: transparent; position: relative; }
+button.hp-pill::after { content: ''; position: absolute; inset: -6px -3px; }
+.hp-pill-ic { width: 26px; height: 26px; border-radius: 50%; background: var(--hp-pill-bg); display: inline-flex; align-items: center; justify-content: center; flex: none; }
+.hp-pill-n { padding: 4px 2px 4px 0; min-width: 8px; }
+.hp-pill.on { color: var(--hp-accent); }
+.hp-pill.on .hp-pill-ic { background: var(--hp-pill-on-bg); }
+.hp-pill.liked { color: #ef4444; }
+.hp-pill.liked .hp-pill-ic { background: var(--hp-like-bg); animation: hp-like-pop 0.35s cubic-bezier(0.34, 1.56, 0.64, 1); }
+button.hp-pill:active .hp-pill-ic { opacity: 0.7; }
+button.hp-pill:focus:not(:focus-visible) { outline: none; }
+span.hp-pill { cursor: default; }
+@keyframes hp-like-pop { 0% { transform: scale(1); } 45% { transform: scale(1.35); } 100% { transform: scale(1); } }
+.hp-actions .ct-anchor { margin-left: auto; }
+@media (max-width: 374px) {
+  .hp-actions { gap: 5px; padding-left: 10px; padding-right: 10px; }
+  .hp-pill { gap: 3px; }
+  .hp-pill-n { padding-right: 0; }
+}
+@media (max-width: 340px) {
+  .hp-actions { gap: 3px; padding-left: 8px; padding-right: 8px; }
+  .hp-pill-ic { width: 24px; height: 24px; }
+  .hp-pill, .hp-actions .ct-count { font-size: 12px; }
+  .hp-actions .ct-pill { gap: 3px; }
+  .hp-actions .ct-icon { width: 24px; height: 24px; }
+}
+@media (prefers-reduced-motion: reduce) { .hp-pill.liked .hp-pill-ic { animation: none; } }
+
+/* Create post sheet (CreatePostModal): full screen on phones, a dialog on desktop */
+.hp-sheet-backdrop { display: none; }
+.hp-sheet-backdrop.open { display: flex; position: fixed; inset: 0; z-index: 120; background: rgba(0, 0, 0, 0.45); align-items: center; justify-content: center; padding: 24px; }
+.hp-sheet { background: var(--card); color: var(--text); width: 100%; max-width: 600px; height: min(720px, calc(100vh - 48px)); border-radius: 16px; overflow: hidden; display: flex; flex-direction: column; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.3); animation: hp-sheet-in 0.2s ease; }
+@keyframes hp-sheet-in { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+@media (max-width: 600px) {
+  .hp-sheet-backdrop.open { padding: 0; align-items: stretch; }
+  .hp-sheet { max-width: none; height: 100%; height: 100dvh; border-radius: 0; box-shadow: none; animation-name: hp-sheet-up; }
+}
+@keyframes hp-sheet-up { from { transform: translateY(40px); opacity: 0.4; } to { transform: none; opacity: 1; } }
+html.hp-sheet-open .tabbar, html.hp-sheet-open .env-pill { visibility: hidden; }
+.hp-cps { display: flex; flex-direction: column; height: 100%; min-height: 0; }
+.hp-cps-head { display: flex; align-items: center; gap: 8px; padding: calc(10px + env(safe-area-inset-top)) 12px 10px; border-bottom: 1px solid var(--line); flex: none; }
+.hp-cps-close { width: 40px; height: 40px; border: none; background: none; color: var(--text); display: flex; align-items: center; justify-content: center; border-radius: 50%; flex: none; }
+@media (hover: hover) { .hp-cps-close:hover { background: rgba(127, 127, 127, 0.12); } }
+.hp-cps-title { flex: 1; text-align: center; font-size: 17px; font-weight: 700; }
+.hp-cps-post { background: #2c4364; color: #fff; border: none; border-radius: 10px; padding: 8px 16px; min-width: 72px; min-height: 36px; font-size: 14px; font-weight: 700; flex: none; }
+.hp-cps-post:disabled { opacity: 0.5; cursor: not-allowed; }
+.hp-cps-body { flex: 1; min-height: 0; overflow-y: auto; padding: 12px 16px 24px; -webkit-overflow-scrolling: touch; }
+.hp-cps-user { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.hp-cps-user .avatar { box-shadow: 0 0 0 1px var(--line); }
+.hp-cps-who { min-width: 0; }
+.hp-cps-name { font-size: 15px; font-weight: 700; text-transform: capitalize; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hp-cps-sub { font-size: 13px; color: var(--muted); }
+.hp-cps-input { display: block; width: 100%; min-height: 140px; resize: none; border: none; outline: none; background: transparent; color: var(--text); font-size: 18px; line-height: 1.45; padding: 8px 0 12px; }
+.hp-cps-input::placeholder { color: #9ca3af; }
+.hp-cps .hp-mentions { margin: 0 0 10px; }
+.hp-cps .hp-thumbs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 4px 0 0; }
+.hp-cps .hp-thumb { width: auto; height: auto; aspect-ratio: 1; }
+.hp-cps .hp-poll-edit, .hp-cps .hp-upload { margin-left: 0; }
+.hp-cps-bar { display: flex; align-items: center; justify-content: space-around; gap: 4px; flex: none; border-top: 1px solid var(--line); padding: 10px 12px calc(10px + env(safe-area-inset-bottom)); background: var(--card); }
+.hp-cps-bar .hp-tool { position: relative; display: inline-flex; flex-direction: row; align-items: center; gap: 8px; padding: 10px; color: var(--text); font-size: 14px; font-weight: 600; cursor: pointer; white-space: nowrap; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; }
+.hp-cps-bar .hp-tool span { display: inline; }
+.hp-cps-bar .hp-tool svg, .hp-cps-bar .hp-tool:nth-child(n) svg { color: var(--hp-cps-ink); }
+.hp-cps-bar .hp-tool.on { background: rgba(63, 79, 245, 0.1); color: var(--hp-cps-ink); }
+.hp-cps-bar .hp-tool.disabled, .hp-cps-bar .hp-tool:disabled { opacity: 0.5; cursor: not-allowed; }
+.hp-cps-bar .hp-tool:focus-within { outline: 2px solid var(--blue); outline-offset: 1px; }
+.hp-cps-bar .hp-checking { flex: none; }
+@media (max-width: 360px) { .hp-cps-bar .hp-tool { padding: 8px 6px; gap: 6px; } }
+/* ===== END Home screen like the app ===== */
+.hp-sr { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); border: 0; white-space: nowrap; }
+@media (max-width: 374px) {
+  .hp-feedhead { padding-left: 12px; padding-right: 12px; }
+  .hp-appbar { gap: 4px; }
+  .hp-appbar-side { min-width: 0; gap: 5px; }
+  .hp-getapp { font-size: 11px; padding: 6px 8px; }
+  .hp-appbar-title { font-size: 18px; }
+  .hp-hbtn { width: 32px; }
+  .hp-hbtn.hp-bell { width: 36px; }
+  .hp-bell-dot { right: 6px; }
+}

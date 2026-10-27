@@ -17,11 +17,22 @@ const TABS = [
   { to: '/profile', label: 'Profile', icon: 'user', match: (p: string) => p.startsWith('/profile') || p.startsWith('/u/') },
 ];
 
-function useNotifCount(enabled: boolean) {
-  const q = useQuery(enabled ? 'notif:count' : null, async () => {
-    const { data } = await api.get('/notification/v2/overlook');
-    const d = data?.data;
-    return Number((Array.isArray(d) ? d[0]?.count : d?.count) ?? data?.count ?? 0) || 0;
+let notifInflight: Promise<number> | null = null;
+/** Unread notification count (GET /notification/v2/overlook). Shared by the top bar, sidebar and Home's header; one request at a time. */
+export function useNotifCount(enabled: boolean) {
+  const q = useQuery(enabled ? 'notif:count' : null, () => {
+    if (!notifInflight) {
+      notifInflight = api
+        .get('/notification/v2/overlook')
+        .then(({ data }) => {
+          const d = data?.data;
+          return Number((Array.isArray(d) ? d[0]?.count : d?.count) ?? data?.count ?? 0) || 0;
+        })
+        .finally(() => {
+          notifInflight = null;
+        });
+    }
+    return notifInflight;
   }, { staleMs: 60_000 });
   return q.data || 0;
 }
@@ -38,7 +49,8 @@ export function Shell({ children, wide }: { children: React.ReactNode; wide?: bo
     </Link>
   );
   return (
-    <div className="shell">
+    // On phones Home shows its own app-style header (logo · i'llTip · search / saved / bell), so the navy top bar is hidden there.
+    <div className={'shell' + (pathname === '/' ? ' shell-home' : '')}>
       <aside className="sidebar">
         {brand}
         <nav className="nav">
