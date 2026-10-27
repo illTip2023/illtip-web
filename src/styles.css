@@ -245,3 +245,20 @@ button.hp-act:focus:not(:focus-visible) { outline: none; }
   .shell-home .topbar { display: none; }
   .shell-home .content { padding-top: 0; }
 }
+
+/* On-screen keyboard (src/ui/useVisualViewport.ts sets html.kb-open, --vvh, --vvtop).
+   Fixed bottom chrome would float over / behind the keyboard on iOS, so it steps aside while typing. */
+html.kb-open .tabbar, html.kb-open .env-pill { display: none !important; }
+/* Phone chat conversation is full-screen (the app hides its tab bar on ChatScreen): no tab bar / env pill,
+   and the page behind can't scroll (iOS otherwise scrolls the layout viewport when the input gets focus). */
+@media (max-width: 860px) {
+  html.chat-pinned .tabbar, html.chat-pinned .env-pill { display: none !important; }
+  html.chat-pinned, html.chat-pinned body { overflow: hidden; overscroll-behavior: none; }
+}
+/* Full-screen viewer comment sheet: while typing, pin it above the keyboard (the viewer itself stays put). */
+html.kb-open .vw-sheet-backdrop { position: fixed; }
+html.kb-open .vw-sheet { position: fixed; bottom: auto; top: calc(var(--vvtop, 0px) + var(--vvh, 100dvh) * 0.12); height: calc(var(--vvh, 100dvh) * 0.88); max-height: none; animation: none; }
+html.kb-open .vw-sheet-foot { padding-bottom: 10px; }
+@media (min-width: 700px) {
+  html.kb-open .vw-sheet { left: 50%; right: auto; width: min(100%, 520px); transform: translateX(-50%); }
+}

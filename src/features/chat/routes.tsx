@@ -12,6 +12,7 @@ import { ChatThread } from './ChatThread';
 import { applyMessageToInbox, refreshInbox } from './inbox';
 import { BotAvatar, useFillHeight, useMediaQuery } from './shared';
 import { CHAT_SOCKET_EVENTS, onChatEvent, useChatSocketStatus } from './socket';
+import { useVisualViewport } from '../../ui/useVisualViewport';
 import './chat.css';
 
 function EmptyPane() {
@@ -43,10 +44,21 @@ function ChatPage() {
   const { user } = useAuth();
   const me = user?.id || '';
   const wide = useMediaQuery('(min-width: 1000px)');
-  const fillRef = useFillHeight<HTMLDivElement>(wide ? 16 : 0);
+  const phone = useMediaQuery('(max-width: 860px)');
   const socket = useChatSocketStatus(me);
 
   const mode = pathname === '/chat/new' ? 'new' : pathname === '/chat/ai' ? 'ai' : roomId ? 'room' : 'list';
+  // Phones: an open conversation is full-screen like the app (which hides the tab bar on ChatScreen / AIChatbotScreen),
+  // pinned to the *visual* viewport so the composer sits right on top of the keyboard.
+  const pinned = phone && (mode === 'room' || mode === 'ai');
+  useVisualViewport(pinned);
+  useEffect(() => {
+    if (!pinned) return;
+    const root = document.documentElement;
+    root.classList.add('chat-pinned');
+    return () => root.classList.remove('chat-pinned');
+  }, [pinned]);
+  const fillRef = useFillHeight<HTMLDivElement>(wide ? 16 : 0, !pinned);
   const openRoom = mode === 'room' ? roomId : undefined;
 
   // Inbox: load now, then poll (fast when the socket is down), refresh on focus.
@@ -85,7 +97,7 @@ function ChatPage() {
   const showPane = wide || mode !== 'list';
 
   return (
-    <div className={'chat-layout ' + (wide ? 'two-pane' : 'one-pane')} ref={fillRef}>
+    <div className={'chat-layout ' + (wide ? 'two-pane' : 'one-pane') + (pinned ? ' vv-pinned' : '')} ref={fillRef}>
       {showList && <ChatList activeRoomId={openRoom} mode={mode} socket={socket} />}
       {showPane && (
         <div className="chat-pane">

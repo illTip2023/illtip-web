@@ -12,7 +12,7 @@ import { useAuth } from '../../lib/auth';
 import { APP_LINKS } from '../../lib/env';
 import { href, navigate } from '../../lib/router';
 import { Icon, toast } from '../../ui/kit';
-import { BotAvatar, Ico, useMediaQuery } from './shared';
+import { BotAvatar, Ico, useMediaQuery, useStickToBottomOnResize } from './shared';
 
 type BotMsg = { id: string; type: 'user' | 'bot' | 'loading'; text?: string; ts: number; status?: 'sending' | 'delivered' | 'read' };
 
@@ -158,6 +158,7 @@ export function AIChat({ wide }: { wide: boolean }) {
   const [needsUpgrade, setNeedsUpgrade] = useState(false);
   const [credits, setCredits] = useState<number | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  useStickToBottomOnResize(scrollRef);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const lock = useRef(false);
 

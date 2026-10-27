@@ -5,6 +5,7 @@ import { useQuery } from '../../lib/query';
 import { Avatar, ErrorBox, Icon, PageHeader, compactNumber, timeAgo, toast } from '../../ui/kit';
 import { avatarOf, commentPost, displayName, epochMs, errMsg, fetchComments, fetchRelated, getPost, likeComment, remapMentions, type Comment, type Mention, type Post } from './api';
 import { useMentionPicker } from './useMentionPicker';
+import { useVisualViewport } from '../../ui/useVisualViewport';
 import { PostCard, PostSkeleton, RichText } from './PostCard';
 import { PostTile } from './PostTile';
 import { loadSaved, patchPost } from './store';
@@ -46,6 +47,7 @@ export function PostDetails() {
 }
 
 function Comments({ post, inputRef, autoFocus }: { post: Post; inputRef: RefObject<HTMLTextAreaElement>; autoFocus: boolean }) {
+  useVisualViewport(); // html.kb-open hides the tab bar / env pill over the keyboard
   const { user } = useAuth();
   const id = Number(post.statusPostId);
   const q = useQuery(`home:comments:${id}`, () => fetchComments(post), { staleMs: 5_000 });

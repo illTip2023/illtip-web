@@ -12,9 +12,11 @@ import { I } from './icons';
 import { authorOf, avatarOf, commentPost, displayName, epochMs, errMsg, fetchComments, isBoosted, likeComment, type Comment, type Post } from './api';
 import { RichText } from './PostCard';
 import { patchPost, usePostPatch } from './store';
+import { useVisualViewport } from '../../ui/useVisualViewport';
 
 export function ViewerComments({ post, onClose }: { post: Post; onClose: () => void }) {
   const { user } = useAuth();
+  useVisualViewport(); // pins the sheet above the keyboard (html.kb-open rules in styles.css)
   const id = Number(post.statusPostId);
   const patch = usePostPatch(id);
   // Same cache key as the post details page, so both stay in step.

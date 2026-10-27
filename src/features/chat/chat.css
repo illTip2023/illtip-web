@@ -199,3 +199,21 @@ a.thread-peer:hover { background: var(--chat-hover); }
   .msg { max-width: 82%; }
   .thread-scroll { padding: 10px 10px 6px; }
 }
+
+/* Phones: an open conversation (room / AI chatbot) is full-screen and pinned to the VISUAL viewport
+   (--vvh / --vvtop from src/ui/useVisualViewport.ts), so the header stays at the top, messages fill
+   the middle and the composer sits directly on the keyboard. Fallbacks for before the first measure. */
+.chat-layout.vv-pinned {
+  position: fixed; left: 0; right: 0; z-index: 45;
+  top: 0; top: var(--vvtop, 0px);
+  height: 100vh; height: 100dvh; height: var(--vvh, 100dvh);
+  min-height: 0; max-height: none; overflow: hidden;
+  overscroll-behavior: none;
+}
+.chat-layout.vv-pinned .chat-pane, .chat-layout.vv-pinned .thread { min-height: 0; height: 100%; }
+.chat-layout.vv-pinned .thread-head { flex: none; padding-top: calc(10px + env(safe-area-inset-top, 0px)); }
+.chat-layout.vv-pinned .thread-scroll { min-height: 0; -webkit-overflow-scrolling: touch; }
+.chat-layout.vv-pinned .composer-wrap { flex: none; padding-bottom: calc(8px + env(safe-area-inset-bottom, 0px)); }
+/* keyboard up: the visual viewport ends at the keyboard, no home-indicator / status-bar gaps needed */
+html.kb-open .chat-layout.vv-pinned .composer-wrap { padding-bottom: 8px; }
+html.kb-open .chat-layout.vv-pinned .thread-head { padding-top: 10px; }

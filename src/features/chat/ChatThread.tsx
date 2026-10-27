@@ -26,7 +26,7 @@ import {
   uploadChatFile,
 } from './api';
 import { applyMessageToInbox, clearUnread, peerForRoom, rememberPeer, useInbox } from './inbox';
-import { Attachment, Ico, Linkified, useMediaQuery } from './shared';
+import { Attachment, Ico, Linkified, useMediaQuery, useStickToBottomOnResize } from './shared';
 import { CHAT_SOCKET_EVENTS, emitChatEvent, onChatEvent, SocketStatus } from './socket';
 
 const PAGE = 30;
@@ -70,6 +70,7 @@ export function ChatThread({ roomId, socket, wide }: { roomId: string; socket: S
   const [dragging, setDragging] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  useStickToBottomOnResize(scrollRef);
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const fileRef = useRef<HTMLInputElement>(null);
   const atBottom = useRef(true);

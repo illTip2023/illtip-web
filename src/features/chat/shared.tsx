@@ -16,11 +16,16 @@ export function useMediaQuery(q: string) {
 }
 
 /** Sizes the element to fill the viewport below its top edge (minus the phone tab bar). */
-export function useFillHeight<T extends HTMLElement>(bottomGap = 0) {
+export function useFillHeight<T extends HTMLElement>(bottomGap = 0, enabled = true) {
   const ref = useRef<T | null>(null);
   useLayoutEffect(() => {
     const el = ref.current;
     if (!el) return;
+    if (!enabled) {
+      // Sized by CSS instead (phone conversation pinned to the visual viewport).
+      el.style.height = '';
+      return;
+    }
     const calc = () => {
       const vh = window.visualViewport?.height ?? window.innerHeight;
       const top = el.getBoundingClientRect().top + window.scrollY;
@@ -37,8 +42,34 @@ export function useFillHeight<T extends HTMLElement>(bottomGap = 0) {
       window.removeEventListener('resize', calc);
       window.visualViewport?.removeEventListener('resize', calc);
     };
-  }, [bottomGap]);
+  }, [bottomGap, enabled]);
   return ref;
+}
+
+/**
+ * Keeps a message list anchored to its newest message when it gets shorter (keyboard opening,
+ * composer growing): if you were at (or typing near) the bottom you stay at the bottom; otherwise
+ * the bottom edge stays put, so the messages you were reading don't slide under the keyboard.
+ */
+export function useStickToBottomOnResize(ref: { readonly current: HTMLElement | null }) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el || typeof ResizeObserver === 'undefined') return;
+    let prevH = el.clientHeight;
+    const ro = new ResizeObserver(() => {
+      const h = el.clientHeight;
+      const d = prevH - h;
+      if (d > 0) {
+        const wasAtBottom = el.scrollHeight - el.scrollTop - prevH < 140;
+        const typing = !!document.activeElement?.closest?.('.composer');
+        if (wasAtBottom || typing) el.scrollTop = el.scrollHeight;
+        else el.scrollTop += d;
+      }
+      prevH = h;
+    });
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [ref]);
 }
 
 const EXTRA: Record<string, string> = {
