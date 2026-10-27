@@ -35,5 +35,6 @@ import { routes as notifications } from './features/notifications/routes';
 import { routes as wallet } from './features/wallet/routes';
 import { routes as settings } from './features/settings/routes';
 import { routes as plans } from './features/plans/routes';
+import { routes as coins } from './features/coins/routes';
 
-export const ROUTES: RouteDef[] = [{ path: '/information', element: InformationPage, auth: false, chrome: false }, { path: '/referral', element: ReferralRoute, auth: false, chrome: false }, ...auth, ...jobs, ...hirepros, ...chat, ...profile, ...notifications, ...wallet, ...settings, ...plans, ...home];
+export const ROUTES: RouteDef[] = [{ path: '/information', element: InformationPage, auth: false, chrome: false }, { path: '/referral', element: ReferralRoute, auth: false, chrome: false }, ...auth, ...jobs, ...hirepros, ...chat, ...profile, ...notifications, ...wallet, ...settings, ...plans, ...coins, ...home];
