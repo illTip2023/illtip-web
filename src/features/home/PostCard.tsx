@@ -641,7 +641,7 @@ export function PostCard({ post, detail, onDeleted, onCommentClick }: { post: Po
 
   return (
     <article className="hp-card" ref={ref}>
-      {boosted && <div className="hp-boosted">Boosted Post</div>}
+      {boosted && <div className="hp-boosted">Boosted Post 🚀</div>}
       <header className="hp-head">
         <Link to={`/u/${encodeURIComponent(author.userId)}`} className="hp-avatar-link">
           <Avatar src={author.avatar} name={author.name} size={44} />
