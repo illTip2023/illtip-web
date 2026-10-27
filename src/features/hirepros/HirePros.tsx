@@ -1,261 +1,433 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { api } from '../../lib/api';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../lib/auth';
-import { normalizeImageDetails, pickDisplayableImageUri } from '../../lib/images';
-import { useInfinite, useOnVisible } from '../../lib/query';
+import { invalidate, useInfinite, useOnVisible } from '../../lib/query';
 import { Link, navigate, useQueryParams } from '../../lib/router';
-import { Avatar, ErrorBox } from '../../ui/kit';
-import { JIcon, JobThumb, VerifiedBadge } from '../jobs/components';
-import { str, useMasterServices } from '../jobs/lib';
+import { toast } from '../../ui/kit';
+import { ConfirmModal, JIcon } from '../jobs/components';
+import { deleteJob, fetchMyJobsPage, STATUS_LABEL, str, useMasterServices, type MasterService, type MyJob } from '../jobs/lib';
 
-type Person = { userId: string; name: string; service?: string; avatar?: string; verified: boolean };
+/*
+ * Mirrors the app's Hire Pros tab (illtip-mobile src/ui/screens/HireProsScreen.tsx):
+ * navy header ("Request a Service" + collapsible SearchBar + CategoryTabs), then a white sheet with
+ * either the 3-column SkillCard grid (tap → request form) or, when the user already posted requests
+ * in that tab, the "Service Request History" list (HistoryCard) with a "+" FAB to post a new one.
+ */
 
-const PEOPLE_PAGE_SIZE = 10; // server multiplies by 10 (100 rows per page)
+type SkillItem = { skillId: number; skill: string; imageUrl?: string; serviceId: number; service: string };
 
-function isBadName(v: string) {
-  const l = v.trim().toLowerCase();
-  return !l || l === 'undefined' || l === 'null' || l === 'nan';
+/** utils/roleOnboardingNavigationSelection.ts normalizeCatalogLabel */
+function norm(v: unknown) {
+  return String(v ?? '')
+    .toLowerCase()
+    .replace(/&/g, ' and ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
 }
-function looksLikePhone(v: string) {
-  const t = v.trim();
-  if (!/^\+?[\d\s().-]+$/.test(t)) return false;
-  const d = t.replace(/\D/g, '');
-  return d.length >= 8 && d.length <= 15;
+
+/** utils/isSmartMatch.ts */
+function isSmartMatch(target: string, search: string) {
+  if (!search) return true;
+  const s = search.toLowerCase().split(/\s+/).filter((t) => t.length > 2);
+  const t = target.toLowerCase().split(/\s+/);
+  return s.every((a) => t.some((b) => b.startsWith(a) || a.startsWith(b.slice(0, 4))));
 }
 
-/** Mobile utils/peopleUserRows.ts */
-function toPerson(o: any): Person | null {
-  if (!o || typeof o !== 'object') return null;
-  const userId = str(o.userId ?? o.id ?? o._id).trim();
-  if (!userId) return null;
-  let name = 'User';
-  for (const c of [o.fullName, o.userName, o.name]) {
-    if (typeof c === 'string' && !isBadName(c) && !looksLikePhone(c)) {
-      name = c.trim();
-      break;
-    }
+/** historyItemMatchesHireProsTab + serviceSlice findCategoryForItem (catalog lookup by skillId). */
+function jobMatchesTab(j: MyJob, cat: MasterService, all: MasterService[]) {
+  const tab = norm(cat.service);
+  if (norm(j.category) === tab || norm(j.title) === tab) return true;
+  const sid = Number(j.raw?.serviceDetails?.serviceId);
+  if (Number.isFinite(sid) && j.raw?.serviceDetails?.serviceId != null) return sid === cat.serviceId;
+  const kid = str(j.raw?.skillTypeDetails?.skillId ?? j.raw?.skillId);
+  if (!kid) return false;
+  const owners = all.filter((c) => c.skills.some((k) => String(k.skillId) === kid));
+  return owners.length === 1 && owners[0].serviceId === cat.serviceId;
+}
+
+/** HireProsScreen renderServiceItem: "Oct 27, 2026, 11:24 AM" */
+function neededBy(raw: any): string {
+  let t = Number(raw?.workTime ?? raw?.updatedTime);
+  if (!Number.isFinite(t) || t <= 0) {
+    const d = Date.parse(String(raw?.workTime ?? raw?.date ?? ''));
+    if (!Number.isFinite(d)) return 'No Date';
+    t = d;
   }
-  const service = (typeof o.profession === 'string' && o.profession.trim()) || (typeof o.serviceDetails?.service === 'string' && o.serviceDetails.service.trim()) || undefined;
-  return { userId, name, service, avatar: pickDisplayableImageUri(normalizeImageDetails(o.imageDetails)), verified: o.hasVerifiedBadge === true };
+  if (String(Math.trunc(t)).length === 10) t *= 1000;
+  const d = new Date(t);
+  return `${d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}, ${d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
 }
 
-/** GET /user/people — hooks/usePeopleSearchInfiniteQuery.ts */
-async function fetchPeoplePage(term: string, page: number, me?: string) {
-  const { data } = await api.get('/user/people', { params: { pageSize: PEOPLE_PAGE_SIZE, pageIndex: page, ...(term ? { user: term } : {}) } });
-  const rows: any[] = Array.isArray(data) ? data : Array.isArray(data?.data) ? data.data : Array.isArray(data?.users) ? data.users : [];
-  const seen = new Set<string>();
-  const items: Person[] = [];
-  for (const r of rows) {
-    const p = toPerson(r);
-    if (!p || p.userId === me || seen.has(p.userId.toLowerCase())) continue;
-    seen.add(p.userId.toLowerCase());
-    items.push(p);
-  }
-  return { items, hasMore: rows.length >= PEOPLE_PAGE_SIZE * 10 };
+function TileImg({ src, alt }: { src?: string; alt: string }) {
+  const [bad, setBad] = useState(false);
+  useEffect(() => setBad(false), [src]);
+  if (src && !bad) return <img src={src} alt={alt} loading="lazy" onError={() => setBad(true)} />;
+  return (
+    <span className="hr-img-fallback" aria-hidden>
+      <JIcon name="briefcase" size={30} />
+    </span>
+  );
+}
+
+function SearchGlyph() {
+  return (
+    <svg width="20" height="20" viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+      <circle cx="10.5" cy="10.5" r="6.5" />
+      <path d="M15.5 15.5 20 20" />
+    </svg>
+  );
+}
+function BackGlyph() {
+  return (
+    <svg width="22" height="22" viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M19 12H5M11 6l-6 6 6 6" />
+    </svg>
+  );
+}
+function CloseGlyph() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+      <path d="M6 6l12 12M18 6 6 18" />
+    </svg>
+  );
+}
+function NoResultArt() {
+  return (
+    <svg width="96" height="96" viewBox="0 0 96 96" aria-hidden>
+      <circle cx="48" cy="48" r="44" fill="var(--hr-noresult-bg)" />
+      <circle cx="43" cy="42" r="17" fill="none" stroke="var(--hr-noresult-ink)" strokeWidth="5" />
+      <path d="M55.5 54.5 68 67" stroke="var(--hr-noresult-ink)" strokeWidth="6" strokeLinecap="round" />
+      <path d="M36 42h14" stroke="var(--hr-noresult-ink)" strokeWidth="4" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+/** organisms/HistoryCard.tsx */
+function HistoryCard({ job, onDelete }: { job: MyJob; onDelete: () => void }) {
+  const status = job.status === 'bill_generated' || job.status === 'closed' ? job.status : job.hiredCount > 0 ? 'work_in_progress' : job.status;
+  const label = STATUS_LABEL[status];
+  return (
+    <div className="hr-hcard">
+      <Link to={`/jobs/mine/${encodeURIComponent(job.id)}`} className="hr-hcard-body">
+        <span className="hr-hcard-img">
+          <TileImg src={job.image} alt="" />
+        </span>
+        <span className="hr-hcard-info">
+          <span className="hr-hcard-title">{job.title || 'No Title'}</span>
+          <span className="hr-hcard-row">
+            <JIcon name="pin" size={18} />
+            <span>{job.location}</span>
+          </span>
+          <span className="hr-hcard-row">
+            <JIcon name="money" size={18} />
+            <span>
+              {job.payText ? (
+                <>
+                  <b className="hr-paytxt">{job.payText}</b> pay range
+                </>
+              ) : (
+                'Pay range not specified'
+              )}
+            </span>
+          </span>
+          <span className="hr-hcard-row">
+            <JIcon name="calendar" size={18} />
+            <span>Service needed by {neededBy(job.raw)}</span>
+          </span>
+        </span>
+      </Link>
+      <button type="button" className="hr-hcard-del" onClick={onDelete} aria-label={`Delete ${job.title}`} title="Delete">
+        <JIcon name="trash" size={16} />
+      </button>
+      <div className="hr-hcard-foot">
+        <span className="hr-applicants">
+          <svg width="16" height="16" viewBox="0 0 24 24" aria-hidden>
+            <circle cx="12" cy="7" r="4" fill="currentColor" />
+            <path d="M4 21c0-4.418 3.582-8 8-8s8 3.582 8 8" fill="currentColor" />
+          </svg>
+          <span>
+            <b>{job.applicantCount}</b> {job.applicantCount === 1 ? 'applicant' : 'applicants'}
+          </span>
+        </span>
+        {label && (
+          <span className={'hr-status hr-status-' + status}>
+            <i />
+            {label}
+          </span>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function GridSkeleton() {
+  return (
+    <div className="hr-grid" aria-busy="true" aria-label="Loading services">
+      {Array.from({ length: 12 }).map((_, i) => (
+        <div key={i} className="hr-skill jb-skel">
+          <span className="hr-skill-img jb-shimmer" />
+          <span className="jb-shimmer" style={{ height: 10, width: '70%', borderRadius: 5, margin: '2px auto 0' }} />
+        </div>
+      ))}
+    </div>
+  );
 }
 
 export function HireProsPage() {
   const { user } = useAuth();
   const qp = useQueryParams();
   const services = useMasterServices();
+  const cats = services.data || [];
   const catId = qp.get('cat') ? Number(qp.get('cat')) : null;
-  const q = qp.get('q') || '';
-  const [input, setInput] = useState(q);
-  useEffect(() => setInput((cur) => (cur.trim() === q.trim() ? cur : q)), [q]);
+  const cat = cats.find((c) => c.serviceId === catId) || null;
+  const activeTab = cat ? cat.service : 'All';
 
-  const setParams = (next: { cat?: number | null; q?: string }) => {
-    const p = new URLSearchParams();
-    const c = next.cat !== undefined ? next.cat : catId;
-    const s = next.q !== undefined ? next.q : q;
-    if (c != null) p.set('cat', String(c));
-    if (s.trim()) p.set('q', s.trim());
-    const qs = p.toString();
-    navigate('/hire' + (qs ? '?' + qs : ''), { replace: true });
+  const [search, setSearch] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
+  const [addingNew, setAddingNew] = useState(false);
+  const [toDelete, setToDelete] = useState<MyJob | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+  const tabsRef = useRef<HTMLDivElement>(null);
+
+  // GET /service/v2/fetchServiceRequestList (serviceSlice fetchServiceHistory) — same list as /jobs/mine
+  const history = useInfinite<MyJob>(services.loading ? null : 'jobs:mine:' + user?.id, (p) => fetchMyJobsPage(p, services.data));
+  const [historyStarted, setHistoryStarted] = useState(false);
+  useEffect(() => {
+    if (history.loading) setHistoryStarted(true);
+  }, [history.loading]);
+  const historyReady = !services.loading && (history.items.length > 0 || !!history.error || (historyStarted && !history.loading));
+
+  // Changing tab resets "add new" and the search text (HireProsScreen: useEffect on activeTab)
+  useEffect(() => {
+    setAddingNew(false);
+    setSearch('');
+  }, [activeTab]);
+
+  // Keep the selected tab in view
+  useEffect(() => {
+    const el = tabsRef.current?.querySelector<HTMLElement>('[aria-selected="true"]');
+    el?.scrollIntoView({ block: 'nearest', inline: 'nearest' });
+  }, [activeTab, cats.length]);
+
+  const setTab = (id: number | null) => {
+    navigate('/hire' + (id != null ? `?cat=${id}` : ''), { replace: true });
   };
 
-  useEffect(() => {
-    if (input.trim() === q.trim()) return;
-    const t = setTimeout(() => setParams({ q: input }), 400);
-    return () => clearTimeout(t);
-  }, [input]); // eslint-disable-line react-hooks/exhaustive-deps
+  const tabHistory = useMemo(() => (cat ? history.items.filter((j) => jobMatchesTab(j, cat, cats)) : history.items), [history.items, cat, cats]);
+  const showHistory = tabHistory.length > 0 && !addingNew;
+  // Infinite scroll for the history list (FlatList onEndReached → fetchServiceHistory next page)
+  const sentinel = useOnVisible(() => {
+    if (showHistory && !search) history.loadMore();
+  });
 
-  const cats = services.data || [];
-  const cat = cats.find((c) => c.serviceId === catId) || null;
-  const term = q.trim() || cat?.service || '';
-  const people = useInfinite<Person>('hire:people:' + term, (page) => fetchPeoplePage(term, page, user?.id));
-  const sentinel = useOnVisible(() => people.loadMore());
+  const skills: SkillItem[] = useMemo(() => {
+    const src = cat ? [cat] : cats;
+    return src.flatMap((c) => c.skills.map((k) => ({ ...k, serviceId: c.serviceId, service: c.service })));
+  }, [cat, cats]);
 
-  // Skill suggestions for the search text (mobile "Post job using" suggestions)
-  const skillMatches = useMemo(() => {
-    const s = q.trim().toLowerCase();
-    if (!s) return [];
-    const out: { serviceId: number; service: string; skillId: number; skill: string; imageUrl?: string }[] = [];
-    for (const c of cats) for (const k of c.skills) if (k.skill.toLowerCase().includes(s) || c.service.toLowerCase().includes(s)) out.push({ serviceId: c.serviceId, service: c.service, ...k });
-    return out.slice(0, 8);
-  }, [q, cats]);
+  const shownSkills = useMemo(() => skills.filter((k) => isSmartMatch(k.skill, search)), [skills, search]);
+  const shownHistory = useMemo(() => tabHistory.filter((j) => isSmartMatch(j.title, search)), [tabHistory, search]);
 
-  const skills = cat ? cat.skills : [];
+  // SuggestedSkillsView ("Post job using") when a search has no exact match
+  const suggested: SkillItem[] = useMemo(() => {
+    if (search.length < 2) return [];
+    const all = cats.flatMap((c) => c.skills.map((k) => ({ ...k, serviceId: c.serviceId, service: c.service })));
+    const m = all.filter((k) => isSmartMatch(k.skill, search));
+    if (m.length) return m.slice(0, 4);
+    return all.filter((k) => k.service === 'Recruitment').slice(0, 4);
+  }, [search, cats]);
+
+  const openSearch = () => {
+    setSearchOpen(true);
+    setTimeout(() => inputRef.current?.focus(), 0);
+  };
+  const closeSearch = () => {
+    setSearch('');
+    setSearchOpen(false);
+  };
+
+  const doDelete = async () => {
+    if (!toDelete) return;
+    setDeleting(true);
+    try {
+      await deleteJob(toDelete.id);
+      toast.ok('Service request deleted');
+      setToDelete(null);
+      invalidate('jobs:mine');
+    } catch (e: any) {
+      toast.error(e?.message || 'Failed to delete job');
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const requestHref = (k: SkillItem) => `/hire/request?serviceId=${k.serviceId}&skillId=${k.skillId}`;
+
+  const emptyState = (count: number) =>
+    count === 0 &&
+    (search && suggested.length > 0 ? (
+      <div className="hr-suggest">
+        <h3>No exact matches found</h3>
+        <p>Post job using</p>
+        <div className="hr-suggest-list">
+          {suggested.map((k) => (
+            <Link key={k.serviceId + ':' + k.skillId} to={requestHref(k)} className="hr-suggest-item">
+              <span>{k.skill}</span>
+              <svg width="14" height="14" viewBox="0 0 24 24" aria-hidden style={{ transform: 'rotate(60deg)' }}>
+                <path d="M5 12h14M12 5l7 7-7 7" stroke="currentColor" strokeWidth="2.5" fill="none" strokeLinecap="round" strokeLinejoin="round" />
+              </svg>
+            </Link>
+          ))}
+        </div>
+        <button type="button" className="hr-suggest-reset" onClick={() => setSearch('')}>
+          Clear Search
+        </button>
+      </div>
+    ) : (
+      <div className="hr-noresult">
+        <NoResultArt />
+        <div>{search ? `Couldn't find any results for '${search}'.` : 'No results found.'}</div>
+      </div>
+    ));
+
+  let body: React.ReactNode;
+  if (services.error && !cats.length) {
+    body = (
+      <div className="hr-noresult">
+        <NoResultArt />
+        <div className="hr-err-title">Failed to load services</div>
+        <div className="hr-err-msg">We couldn't load the service catalog. Please check your connection and try again.</div>
+        <button type="button" className="btn btn-sm" onClick={() => services.refetch()} style={{ marginTop: 14 }}>
+          Try again
+        </button>
+      </div>
+    );
+  } else if (services.loading || !historyReady) {
+    body = <GridSkeleton />;
+  } else if (showHistory) {
+    body = (
+      <>
+        <h2 className="hr-history-head">Service Request History</h2>
+        {shownHistory.length ? (
+          <div className="hr-history">
+            {shownHistory.map((j) => (
+              <HistoryCard key={j.id} job={j} onDelete={() => setToDelete(j)} />
+            ))}
+          </div>
+        ) : (
+          emptyState(0)
+        )}
+        {history.loading && <div className="hr-more">Loading…</div>}
+        {history.error && history.items.length > 0 && (
+          <button type="button" className="hr-more hr-more-btn" onClick={() => history.loadMore()}>
+            Couldn't load more. Tap to retry
+          </button>
+        )}
+      </>
+    );
+  } else {
+    body = shownSkills.length ? (
+      <div className="hr-grid">
+        {shownSkills.map((k) => (
+          <Link key={k.serviceId + ':' + k.skillId} to={requestHref(k)} className="hr-skill" title={`${k.skill} · ${k.service}`}>
+            <span className="hr-skill-img">
+              <TileImg src={k.imageUrl} alt="" />
+            </span>
+            <span className="hr-skill-name">{k.skill || 'Unknown Skill'}</span>
+          </Link>
+        ))}
+      </div>
+    ) : (
+      emptyState(0)
+    );
+  }
 
   return (
-    <div className="jb-wide jb-page">
-      <header className="hr-hero">
-        <div className="hr-hero-text">
-          <h1>Hire Pros</h1>
-          <p>Find and recruit top freelancers for any service — hiring has never been this straightforward.</p>
-          <div className="row-wrap" style={{ marginTop: 14 }}>
-            <Link to={'/hire/request' + (cat ? `?serviceId=${cat.serviceId}` : '')} className="btn hr-hero-cta">
-              <JIcon name="plus" size={17} /> Request a Service
-            </Link>
-            <Link to="/jobs/mine" className="btn hr-hero-ghost">
-              Service Request History
-            </Link>
-          </div>
-        </div>
-        <div className="hr-hero-art" aria-hidden>
-          <div className="hr-bubble b1">
-            <JIcon name="users" size={22} />
-          </div>
-          <div className="hr-bubble b2">
-            <JIcon name="briefcase" size={22} />
-          </div>
-          <div className="hr-bubble b3">
-            <JIcon name="star" size={22} />
-          </div>
-        </div>
-      </header>
-
-      <form
-        className="jb-searchbar hr-search"
-        role="search"
-        onSubmit={(e) => {
-          e.preventDefault();
-          setParams({ q: input });
-        }}
-      >
-        <div className="jb-search-field">
-          <JIcon name="search" size={18} />
-          <input className="jb-search-input" placeholder="Search for Related Services" value={input} onChange={(e) => setInput(e.target.value)} aria-label="Search professionals and services" />
-          {input && (
-            <button type="button" className="jb-clear" aria-label="Clear search" onClick={() => (setInput(''), setParams({ q: '' }))}>
-              <JIcon name="close" size={14} />
+    <div className="hr-app">
+      <header className="hr-head">
+        <div className={'hr-titlerow' + (searchOpen ? ' searching' : '')}>
+          {!searchOpen && (
+            <>
+              {addingNew && (
+                <button type="button" className="hr-back" onClick={() => setAddingNew(false)} aria-label="Back to service request history">
+                  <BackGlyph />
+                </button>
+              )}
+              <h1 className="hr-title">Request a Service</h1>
+            </>
+          )}
+          {searchOpen ? (
+            <div className="hr-search open">
+              <button type="button" className="hr-search-ic" onClick={closeSearch} aria-label="Close search">
+                <BackGlyph />
+              </button>
+              <input
+                ref={inputRef}
+                className="hr-search-input"
+                placeholder="Search for Related Services"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onBlur={() => !search && setSearchOpen(false)}
+                onKeyDown={(e) => e.key === 'Escape' && closeSearch()}
+                aria-label="Search for related services"
+              />
+              {search && (
+                <button
+                  type="button"
+                  className="hr-search-clear"
+                  aria-label="Clear search"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => (setSearch(''), inputRef.current?.focus())}
+                >
+                  <CloseGlyph />
+                </button>
+              )}
+            </div>
+          ) : (
+            <button type="button" className="hr-search" onClick={openSearch} aria-label="Search for related services">
+              <SearchGlyph />
             </button>
           )}
         </div>
-        <button className="btn jb-search-btn" type="submit">
-          Search
-        </button>
-      </form>
-
-      <div className="chips jb-cats" role="tablist" aria-label="Service categories">
-        <button role="tab" aria-selected={catId == null} className={'chip' + (catId == null ? ' active' : '')} onClick={() => setParams({ cat: null })}>
-          All
-        </button>
-        {cats.map((c) => (
-          <button key={c.serviceId} role="tab" aria-selected={catId === c.serviceId} className={'chip' + (catId === c.serviceId ? ' active' : '')} onClick={() => setParams({ cat: c.serviceId })}>
-            {c.service}
-          </button>
-        ))}
-      </div>
-
-      {skillMatches.length > 0 && (
-        <section className="hr-section">
-          <div className="hr-section-head">
-            <h2>Post job using</h2>
-            <span className="small muted">Matching services</span>
-          </div>
-          <div className="hr-skill-grid">
-            {skillMatches.map((s) => (
-              <Link key={s.serviceId + ':' + s.skillId} to={`/hire/request?serviceId=${s.serviceId}&skillId=${s.skillId}`} className="hr-skill">
-                <JobThumb src={s.imageUrl} title={s.skill} size={44} />
-                <div style={{ minWidth: 0 }}>
-                  <div className="hr-skill-name ellipsis">{s.skill}</div>
-                  <div className="tiny muted ellipsis">{s.service}</div>
-                </div>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {cat && !q && skills.length > 0 && (
-        <section className="hr-section">
-          <div className="hr-section-head">
-            <h2>Request a service in {cat.service}</h2>
-            <span className="small muted">Pick a skill to post a job</span>
-          </div>
-          <div className="hr-tile-grid">
-            {skills.map((k) => (
-              <Link key={k.skillId} to={`/hire/request?serviceId=${cat.serviceId}&skillId=${k.skillId}`} className="hr-tile">
-                <JobThumb src={k.imageUrl} title={k.skill} size={64} />
-                <span className="hr-tile-name">{k.skill}</span>
-              </Link>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {!cat && !q && cats.length > 0 && (
-        <section className="hr-section">
-          <div className="hr-section-head">
-            <h2>Browse by service</h2>
-          </div>
-          <div className="hr-tile-grid">
-            {cats.map((c) => (
-              <button key={c.serviceId} className="hr-tile" onClick={() => setParams({ cat: c.serviceId })}>
-                <JobThumb src={c.imageUrl} title={c.service} size={64} />
-                <span className="hr-tile-name">{c.service}</span>
-                <span className="tiny muted">{c.skills.length} skills</span>
-              </button>
-            ))}
-          </div>
-        </section>
-      )}
-
-      <section className="hr-section">
-        <div className="hr-section-head">
-          <h2>{term ? `Professionals for “${term}”` : 'Professionals'}</h2>
+        <div className="hr-tabs" role="tablist" aria-label="Service categories" ref={tabsRef}>
+          {services.loading && !cats.length
+            ? Array.from({ length: 4 }).map((_, i) => <span key={i} className="hr-tab hr-tab-skel" />)
+            : [{ serviceId: null as number | null, service: 'All', imageUrl: undefined as string | undefined }, ...cats].map((c) => {
+                const on = c.service === activeTab;
+                return (
+                  <button key={c.service} type="button" role="tab" aria-selected={on} className={'hr-tab' + (on ? ' on' : '')} onClick={() => !on && setTab(c.serviceId)}>
+                    {c.imageUrl && <img src={c.imageUrl} alt="" />}
+                    <span>{c.service}</span>
+                  </button>
+                );
+              })}
         </div>
-        {people.error && people.items.length === 0 ? (
-          <ErrorBox error={{ message: 'Could not load professionals.' }} onRetry={people.reload} />
-        ) : people.loading && people.items.length === 0 ? (
-          <div className="hr-people">
-            {Array.from({ length: 8 }).map((_, i) => (
-              <div key={i} className="hr-person jb-skel">
-                <div className="jb-shimmer" style={{ width: 64, height: 64, borderRadius: '50%' }} />
-                <div className="jb-shimmer" style={{ height: 12, width: '70%', borderRadius: 6, marginTop: 12 }} />
-                <div className="jb-shimmer" style={{ height: 10, width: '50%', borderRadius: 6, marginTop: 8 }} />
-              </div>
-            ))}
-          </div>
-        ) : people.items.length === 0 ? (
-          <div className="jb-empty">
-            <div className="jb-empty-icon">
-              <JIcon name="users" size={26} />
-            </div>
-            <div className="empty-title">{term ? `Couldn't find any results for '${term}'.` : 'No results found.'}</div>
-            <div className="muted small">Post a job and let professionals come to you.</div>
-            <Link to={'/hire/request' + (cat ? `?serviceId=${cat.serviceId}` : '')} className="btn btn-sm" style={{ marginTop: 14 }}>
-              Request a Service
-            </Link>
-          </div>
-        ) : (
-          <div className="hr-people">
-            {people.items.map((p) => (
-              <Link key={p.userId} to={`/u/${encodeURIComponent(p.userId)}`} className="hr-person">
-                <Avatar src={p.avatar} name={p.name} size={64} />
-                <div className="hr-person-name">
-                  <span className="ellipsis">{p.name}</span>
-                  {p.verified && <VerifiedBadge />}
-                </div>
-                <div className="tiny muted hr-person-svc">{p.service || 'i’llTip member'}</div>
-                <span className="hr-person-cta">View profile</span>
-              </Link>
-            ))}
-          </div>
-        )}
-        <div ref={sentinel} />
-        {people.loading && people.items.length > 0 && <div className="center tiny muted" style={{ padding: 12 }}>Loading more…</div>}
+      </header>
+
+      <section className={'hr-sheet' + (showHistory ? ' list' : '')}>
+        {body}
+        <div ref={sentinel} aria-hidden />
       </section>
+
+      {showHistory && !services.loading && (
+        <button type="button" className="hr-fab" onClick={() => (setAddingNew(true), window.scrollTo({ top: 0 }))} aria-label="Request a new service" title="Request a new service">
+          <svg width="24" height="24" viewBox="0 0 24 24" aria-hidden>
+            <path d="M12 3v18M3 12h18" stroke="#fff" strokeWidth="3" />
+          </svg>
+        </button>
+      )}
+
+      <ConfirmModal
+        open={!!toDelete}
+        title="Manage Request"
+        message={toDelete ? `Delete “${toDelete.title}”? This can't be undone.` : ''}
+        confirmLabel="Delete"
+        danger
+        busy={deleting}
+        onConfirm={doDelete}
+        onCancel={() => setToDelete(null)}
+      />
     </div>
   );
 }

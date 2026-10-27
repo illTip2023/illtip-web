@@ -49,8 +49,9 @@ export function Shell({ children, wide }: { children: React.ReactNode; wide?: bo
     </Link>
   );
   return (
-    // On phones Home shows its own app-style header (logo · i'llTip · search / saved / bell), so the navy top bar is hidden there.
-    <div className={'shell' + (pathname === '/' ? ' shell-home' : '')}>
+    // On phones Home (logo · i'llTip · search / saved / bell) and Hire Pros ("Request a Service" + search + category tabs)
+    // show their own app-style headers, so the navy top bar is hidden there.
+    <div className={'shell' + (pathname === '/' || pathname === '/hire' ? ' shell-home' : '')}>
       <aside className="sidebar">
         {brand}
         <nav className="nav">
