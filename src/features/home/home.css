@@ -215,3 +215,87 @@ button.hp-tip:hover { filter: brightness(0.97); box-shadow: inset 0 0 0 1px rgba
 .hp-feedhead { position: sticky; z-index: 15; background: var(--bg); padding-top: 6px; margin-top: -6px; transition: transform .22s ease, opacity .22s ease; will-change: transform; }
 .hp-feedhead.hidden { transform: translateY(calc(-100% - 70px)); opacity: 0; pointer-events: none; }
 .hp-feedhead .hp-composer { margin-bottom: 12px; }
+
+/* ===== BEGIN composer media/poll + comment rows (iPhone fixes) ===== */
+/* Composer tools: Photo / Video are <label>s around a visually-hidden file input (iOS ignores clicks on display:none inputs). */
+.hp-composer .hp-composer-bar { gap: 8px; flex-wrap: nowrap; min-width: 0; }
+.hp-composer .hp-tools { display: flex; align-items: center; gap: 2px; flex: 1 1 auto; min-width: 0; }
+.hp-composer .hp-tool { position: relative; cursor: pointer; user-select: none; -webkit-user-select: none; -webkit-tap-highlight-color: transparent; white-space: nowrap; flex: none; }
+.hp-composer .hp-tool span { display: inline; }
+.hp-composer .hp-tool.disabled { opacity: 0.5; cursor: not-allowed; }
+.hp-composer .hp-tool:focus-within { outline: 2px solid var(--blue); outline-offset: 1px; }
+.hp-composer .hp-tool-photo svg { color: #16a34a; }
+.hp-composer .hp-tool-video svg { color: #e11d48; }
+.hp-composer .hp-tool-poll svg { color: #f59e0b; }
+.hp-composer .hp-tool-poll.on svg { color: var(--blue); }
+.hp-file { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0 0 0 0); clip-path: inset(50%); border: 0; white-space: nowrap; opacity: 0; }
+.hp-composer .hp-post-btn { flex: none; }
+.hp-composer .hp-checking { flex: none; }
+/* while there's a draft, the sticky Home header must not slide away (it took taps away on iPhone) */
+.hp-feedhead.hidden:has(.hp-composer.keep) { transform: none; opacity: 1; pointer-events: auto; }
+
+.hp-thumb-video video { width: 100%; height: 100%; object-fit: cover; display: block; background: #111; pointer-events: none; }
+.hp-thumb-badge { position: absolute; left: 4px; bottom: 4px; display: inline-flex; align-items: center; gap: 3px; background: rgba(0, 0, 0, 0.65); color: #fff; font-size: 11px; font-weight: 600; padding: 2px 6px; border-radius: 999px; }
+
+.hp-upload { display: flex; align-items: center; gap: 10px; margin: 12px 0 0 54px; }
+.hp-upload-track { flex: 1; min-width: 0; height: 6px; border-radius: 999px; background: var(--hp-soft); overflow: hidden; }
+.hp-upload-fill { height: 100%; background: var(--blue); border-radius: 999px; transition: width 0.25s ease; }
+.hp-upload .tiny { flex: none; }
+
+.hp-poll-edit .hp-poll-head { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
+.hp-pe-opt { display: flex; align-items: center; gap: 6px; }
+.hp-pe-opt .input { flex: 1; min-width: 0; }
+.hp-poll-add { align-self: flex-start; }
+.hp-poll-dur { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+.hp-poll-dur-chips { display: flex; gap: 6px; }
+
+@media (max-width: 560px) {
+  .hp-composer { padding: 12px 12px 8px; }
+  .hp-composer .hp-composer-bar { gap: 6px; }
+  .hp-composer .hp-tool { flex-direction: column; gap: 2px; padding: 5px 8px; font-size: 11px; line-height: 1.1; min-width: 48px; justify-content: center; }
+  .hp-composer .hp-tool span { display: block; }
+  .hp-composer .hp-post-btn { min-width: 68px; padding-left: 14px; padding-right: 14px; }
+  .hp-upload { margin-left: 0; }
+}
+@media (max-width: 350px) {
+  .hp-composer .hp-tool { min-width: 0; padding: 5px 6px; }
+  .hp-composer .hp-checking { display: none; }
+}
+
+/* Comment rows, laid out like the app's PostCommentSheet: avatar | name + time / text / Reply · Delete | like */
+.hp-cm-list { display: flex; flex-direction: column; gap: 16px; }
+.hp-cm { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; column-gap: 10px; align-items: start; min-width: 0; }
+.hp-cm-av { display: block; line-height: 0; flex: none; }
+.hp-cm-body { min-width: 0; }
+.hp-cm-meta { display: flex; align-items: baseline; flex-wrap: wrap; column-gap: 8px; row-gap: 0; min-width: 0; line-height: 1.3; }
+.hp-cm-name { color: var(--text); font-weight: 700; font-size: 14px; min-width: 0; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+a.hp-cm-name:hover { text-decoration: underline; }
+.hp-cm-time { color: var(--muted); font-size: 12px; white-space: nowrap; flex: none; }
+.hp-cm-text { font-size: 14.5px; line-height: 1.45; margin-top: 2px; white-space: pre-wrap; overflow-wrap: anywhere; word-break: break-word; color: var(--text); }
+.hp-cm-actions { display: flex; align-items: center; flex-wrap: wrap; gap: 14px; margin-top: 4px; }
+.hp-cm-actions button { background: none; border: none; padding: 2px 0; color: var(--muted); font-size: 12.5px; font-weight: 600; line-height: 1.2; -webkit-tap-highlight-color: transparent; }
+.hp-cm-actions button:disabled { opacity: 0.6; }
+.hp-cm-actions .hp-cm-del { color: var(--err, #dc2626); }
+@media (hover: hover) { .hp-cm-actions button:hover { color: var(--text); text-decoration: underline; } .hp-cm-actions .hp-cm-del:hover { color: var(--err, #dc2626); } }
+.hp-cm-like { display: flex; flex-direction: column; align-items: center; gap: 1px; background: none; border: none; color: var(--muted); padding: 4px 2px 0; min-width: 28px; font-size: 11px; font-weight: 600; line-height: 1; -webkit-tap-highlight-color: transparent; }
+.hp-cm-like.liked { color: var(--hp-like); }
+.hp-cm-thread { display: inline-flex; align-items: center; gap: 8px; margin-top: 8px; background: none; border: none; padding: 2px 0; color: var(--muted); font-size: 12.5px; font-weight: 600; }
+.hp-cm-thread-line { display: inline-block; width: 22px; height: 1px; background: var(--muted); opacity: 0.6; }
+.hp-cm-replies { display: flex; flex-direction: column; gap: 12px; margin-top: 10px; }
+.hp-cm-reply .hp-cm-name { font-size: 13.5px; }
+.hp-cm-reply .hp-cm-text { font-size: 14px; }
+
+.hp-cm-box .hp-mentions { margin-left: 44px; margin-bottom: 8px; }
+.hp-cm-replying { display: flex; align-items: center; justify-content: space-between; gap: 6px; min-width: 0; color: var(--muted); font-size: 12.5px; margin: 0 0 8px; padding: 6px 4px 6px 12px; border-radius: 10px; background: var(--hp-soft); }
+.hp-cm-replying b { color: var(--text); }
+.hp-cm-compose { display: flex; align-items: flex-end; gap: 8px; min-width: 0; }
+.hp-cm-compose .avatar { margin-bottom: 4px; }
+.hp-cm-input { flex: 1; min-width: 0; width: auto; resize: none; line-height: 1.4; overflow-y: auto; }
+.hp-cm-spin { width: 16px; height: 16px; border-radius: 50%; border: 2px solid rgba(255, 255, 255, 0.45); border-top-color: #fff; animation: spin 0.8s linear infinite; }
+
+@media (max-width: 430px) {
+  .hp-comments { padding: 14px 12px; }
+  .hp-cm { column-gap: 8px; }
+  .hp-cm-box .hp-mentions { margin-left: 0; }
+}
+/* ===== END composer media/poll + comment rows ===== */

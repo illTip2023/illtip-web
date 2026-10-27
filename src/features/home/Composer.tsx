@@ -1,85 +1,38 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../lib/auth';
-import { APP_LINKS } from '../../lib/env';
 import { Avatar, Icon, toast } from '../../ui/kit';
 import { I } from './icons';
-import { createPost, errMsg, getPost, MAX_ATTACHMENTS, mentionNameOf, personFromRaw, remapMentions, searchPeople, uploadImage, type Mention, type Post } from './api';
+import { createPost, errMsg, getPost, MAX_ATTACHMENTS, remapMentions, uploadImage, type Post } from './api';
+import { useMentionPicker } from './useMentionPicker';
+import { MAX_VIDEO_MB, MAX_VIDEO_SECONDS, uploadVideo, videoDuration } from './uploadVideo';
 
-type Pick = { file: File; url: string };
+/** One picked attachment. Photos and videos can be mixed, up to MAX_ATTACHMENTS (the app's CreatePostModal rules). */
+type Att = { id: string; file: File; url: string; kind: 'image' | 'video'; seconds?: number | null };
 const DURATIONS = [24, 48, 72] as const;
+const POLL_MAX = 280;
+
+const isVideoFile = (f: File) => f.type.startsWith('video/') || (!f.type && /\.(mp4|mov|m4v|webm|3gp|mkv|avi)$/i.test(f.name));
+const isImageFile = (f: File) => f.type.startsWith('image/') || (!f.type && /\.(jpe?g|png|gif|webp|heic|heif)$/i.test(f.name));
+const fmtDur = (s?: number | null) => (s && Number.isFinite(s) ? `${Math.floor(s / 60)}:${String(Math.round(s % 60)).padStart(2, '0')}` : '');
 
 export function Composer({ onCreated }: { onCreated: (p: Post) => void }) {
   const { user } = useAuth();
   const [text, setText] = useState('');
-  const [files, setFiles] = useState<Pick[]>([]);
+  const [files, setFiles] = useState<Att[]>([]);
   const [pollOn, setPollOn] = useState(false);
   const [options, setOptions] = useState<string[]>(['', '']);
   const [duration, setDuration] = useState<24 | 48 | 72>(24);
   const [busy, setBusy] = useState<string | null>(null);
+  const [progress, setProgress] = useState<number | null>(null);
+  const [checking, setChecking] = useState(false);
   const [focused, setFocused] = useState(false);
-  const [videoNote, setVideoNote] = useState(false);
-  const fileRef = useRef<HTMLInputElement>(null);
   const taRef = useRef<HTMLTextAreaElement>(null);
+  const filesRef = useRef<Att[]>([]);
+  filesRef.current = files;
 
-  /* ---- @mentions: type @ and a name (full names with spaces work, e.g. "@Blessing Ikpia") ---- */
-  const [tagged, setTagged] = useState<Mention[]>([]);
-  const [mq, setMq] = useState<{ q: string; start: number } | null>(null);
-  const [people, setPeople] = useState<{ userId: string; name: string; avatar?: string; profession?: string }[]>([]);
-  const [peopleBusy, setPeopleBusy] = useState(false);
-  const detectMention = (value: string, caret: number) => {
-    const before = value.slice(0, caret);
-    const m = before.match(/(?:^|\s)@([^@\n]{0,40})$/);
-    if (!m || m[1].split(/\s+/).filter(Boolean).length > 3 || /\s{2,}$/.test(m[1])) return setMq(null);
-    setMq({ q: m[1], start: caret - m[1].length - 1 });
-  };
-  useEffect(() => {
-    const q = mq?.q.trim() || '';
-    if (!mq || !q) {
-      setPeople([]);
-      return;
-    }
-    let alive = true;
-    setPeopleBusy(true);
-    const t = setTimeout(async () => {
-      try {
-        const rows = await searchPeople(q, 1);
-        if (!alive) return;
-        const ql = q.toLowerCase();
-        const list = rows
-          .map((r) => ({ ...personFromRaw(r), name: mentionNameOf(r) }))
-          .filter((p) => p.userId && p.name && p.userId !== user?.id)
-          .sort((a, b) => Number(!a.name.toLowerCase().startsWith(ql)) - Number(!b.name.toLowerCase().startsWith(ql)) || Number(!a.name.toLowerCase().includes(ql)) - Number(!b.name.toLowerCase().includes(ql)))
-          .slice(0, 8);
-        setPeople(list);
-      } catch {
-        if (alive) setPeople([]);
-      } finally {
-        if (alive) setPeopleBusy(false);
-      }
-    }, 250);
-    return () => {
-      alive = false;
-      clearTimeout(t);
-    };
-  }, [mq?.q]); // eslint-disable-line react-hooks/exhaustive-deps
-  const pickPerson = (p: { userId: string; name: string }) => {
-    if (!mq) return;
-    const ta = taRef.current;
-    const caret = ta ? ta.selectionStart : text.length;
-    const insert = '@' + p.name + ' ';
-    const next = text.slice(0, mq.start) + insert + text.slice(caret);
-    setText(next);
-    setTagged((t) => (t.some((x) => x.userId === p.userId) ? t : [...t, { userId: p.userId, displayName: p.name, start: 0, length: 0 }]));
-    setMq(null);
-    setPeople([]);
-    requestAnimationFrame(() => {
-      const pos = mq.start + insert.length;
-      ta?.focus();
-      ta?.setSelectionRange(pos, pos);
-    });
-  };
+  const mention = useMentionPicker({ text, setText, taRef, selfId: user?.id });
 
-  useEffect(() => () => files.forEach((f) => URL.revokeObjectURL(f.url)), []); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => () => filesRef.current.forEach((f) => URL.revokeObjectURL(f.url)), []);
 
   // auto-grow textarea
   useEffect(() => {
@@ -89,40 +42,76 @@ export function Composer({ onCreated }: { onCreated: (p: Post) => void }) {
     ta.style.height = Math.min(320, ta.scrollHeight) + 'px';
   }, [text]);
 
-  const addFiles = (list: FileList | File[] | null) => {
+  const addFiles = async (list: FileList | File[] | null) => {
     if (!list) return;
     const arr = Array.from(list);
-    if (arr.some((f) => f.type.startsWith('video/'))) setVideoNote(true);
-    const imgs = arr.filter((f) => f.type.startsWith('image/'));
-    if (!imgs.length) return;
+    if (!arr.length) return;
     if (pollOn) {
-      toast.error('Remove the poll before adding photos.');
+      toast.error('Remove the poll before adding photos or videos.');
       return;
     }
-    setFiles((prev) => {
-      const room = MAX_ATTACHMENTS - prev.length;
-      if (imgs.length > room) toast.error(`You can attach up to ${MAX_ATTACHMENTS} items per post.`);
-      return [...prev, ...imgs.slice(0, Math.max(0, room)).map((file) => ({ file, url: URL.createObjectURL(file) }))];
-    });
+    const supported = arr.filter((f) => isImageFile(f) || isVideoFile(f));
+    if (supported.length < arr.length) toast.error('Only photos and videos can be attached.');
+    let room = MAX_ATTACHMENTS - filesRef.current.length;
+    if (room <= 0) {
+      toast.error(`You can attach up to ${MAX_ATTACHMENTS} items per post.`);
+      return;
+    }
+    if (supported.length > room) toast.error(`You can attach up to ${MAX_ATTACHMENTS} items per post.`);
+    const accepted: Att[] = [];
+    const tooBig: string[] = [];
+    let tooLong = 0;
+    setChecking(supported.some(isVideoFile));
+    try {
+      for (const file of supported) {
+        if (room <= 0) break;
+        if (isVideoFile(file)) {
+          if (file.size > MAX_VIDEO_MB * 1024 * 1024) {
+            tooBig.push(file.name);
+            continue;
+          }
+          const seconds = await videoDuration(file);
+          if (seconds != null && seconds > MAX_VIDEO_SECONDS + 0.5) {
+            tooLong += 1;
+            continue;
+          }
+          accepted.push({ id: Math.random().toString(36).slice(2), file, url: URL.createObjectURL(file), kind: 'video', seconds });
+        } else {
+          accepted.push({ id: Math.random().toString(36).slice(2), file, url: URL.createObjectURL(file), kind: 'image' });
+        }
+        room -= 1;
+      }
+    } finally {
+      setChecking(false);
+    }
+    if (tooLong) toast.error(tooLong === 1 ? 'Videos must be 3 minutes or shorter. That video was not added.' : `${tooLong} videos were longer than 3 minutes and were not added.`);
+    if (tooBig.length) toast.error(`Videos must be ${MAX_VIDEO_MB} MB or smaller. Trim the video or send a shorter clip.`);
+    if (!accepted.length) return;
+    setFocused(true);
+    setFiles((prev) => [...prev, ...accepted].slice(0, MAX_ATTACHMENTS));
   };
 
-  const removeFile = (i: number) =>
+  const removeFile = (id: string) =>
     setFiles((prev) => {
-      URL.revokeObjectURL(prev[i].url);
-      return prev.filter((_, j) => j !== i);
+      const f = prev.find((x) => x.id === id);
+      if (f) URL.revokeObjectURL(f.url);
+      return prev.filter((x) => x.id !== id);
     });
 
   const cleanOpts = options.map((o) => o.trim()).filter(Boolean);
   const optsUnique = new Set(cleanOpts.map((o) => o.toLowerCase())).size === cleanOpts.length;
-  const pollValid = text.trim().length > 0 && text.trim().length <= 280 && cleanOpts.length >= 2 && cleanOpts.length <= 4 && optsUnique && cleanOpts.every((o) => o.length <= 80);
-  const canPost = !busy && (pollOn ? pollValid : text.trim().length > 0 || files.length > 0);
+  const qLen = text.trim().length;
+  const pollValid = qLen > 0 && qLen <= POLL_MAX && cleanOpts.length >= 2 && cleanOpts.length <= 4 && optsUnique && cleanOpts.every((o) => o.length <= 80);
+  const canPost = !busy && !checking && (pollOn ? pollValid : qLen > 0 || files.length > 0);
   const expanded = focused || !!text || files.length > 0 || pollOn;
+  const keep = !!text || files.length > 0 || pollOn || !!busy;
+  const full = files.length >= MAX_ATTACHMENTS;
+  const mediaDisabled = !!busy || pollOn || full || checking;
 
   const reset = () => {
     files.forEach((f) => URL.revokeObjectURL(f.url));
     setText('');
-    setTagged([]);
-    setMq(null);
+    mention.clear();
     setFiles([]);
     setPollOn(false);
     setOptions(['', '']);
@@ -133,29 +122,56 @@ export function Composer({ onCreated }: { onCreated: (p: Post) => void }) {
   const submit = async () => {
     if (busy) return;
     if (!canPost) {
+      if (checking) return;
       if (pollOn && !optsUnique) toast.error('Poll options must be different.');
+      else if (pollOn && qLen > POLL_MAX) toast.error(`Poll questions can be up to ${POLL_MAX} characters.`);
       else if (pollOn) toast.error('Add a question and at least two options.');
-      else toast.error('Add text or at least one image.');
+      else toast.error('Add text, a photo or a video.');
       return;
     }
+    const caption = text.trim();
     try {
       let imageArr: any[] = [];
       if (!pollOn && files.length) {
-        let done = 0;
-        setBusy(`Uploading 0/${files.length}…`);
+        // Like the app's useCreatePost: per-item fractions averaged into one bar, the last 10% for creating the post.
+        const fr = files.map(() => 0);
+        const processing = files.map(() => false);
+        const report = () => {
+          const avg = fr.reduce((s, x) => s + x, 0) / files.length;
+          setProgress(Math.min(0.9, avg * 0.9));
+          const vidsProcessing = files.some((f, i) => f.kind === 'video' && processing[i] && fr[i] < 1);
+          setBusy(vidsProcessing ? 'Processing video…' : `Uploading ${Math.round(Math.min(0.9, avg * 0.9) * 100)}%`);
+        };
+        setProgress(0);
+        setBusy('Uploading 0%');
         const batches = await Promise.all(
-          files.map(async (f) => {
+          files.map(async (f, i) => {
+            if (f.kind === 'video') {
+              const r = await uploadVideo(f.file, ({ phase, fraction }) => {
+                // upload bytes = first 80% of this item; the server's MP4 conversion = the rest
+                processing[i] = phase === 'processing';
+                fr[i] = phase === 'processing' ? 0.8 : fraction * 0.8;
+                report();
+              });
+              fr[i] = 1;
+              processing[i] = false;
+              report();
+              return r;
+            }
             const r = await uploadImage(f.file);
-            done += 1;
-            setBusy(`Uploading ${done}/${files.length}…`);
+            fr[i] = 1;
+            report();
             return r;
           }),
         );
         imageArr = batches.flat();
       }
+      setProgress((p) => (p == null ? null : 0.9));
       setBusy('Posting…');
       const id = await createPost(
-        pollOn ? { caption: '', imageArr: [], poll: { question: text.trim(), options: cleanOpts, durationHours: duration } } : { caption: text.trim(), imageArr, mentions: remapMentions(text.trim(), tagged) },
+        pollOn
+          ? { caption: '', imageArr: [], mentions: [], poll: { question: caption, options: cleanOpts, durationHours: duration } }
+          : { caption, imageArr, mentions: remapMentions(caption, mention.tagged) },
       );
       let post: Post | null = null;
       if (id) {
@@ -165,24 +181,52 @@ export function Composer({ onCreated }: { onCreated: (p: Post) => void }) {
           post = null;
         }
       }
+      setProgress((p) => (p == null ? null : 1));
       toast.ok('Post created successfully.');
+      const wasPoll = pollOn;
       reset();
       if (post) onCreated(post);
-      else onCreated({ statusPostId: id || Date.now(), caption: pollOn ? '' : text.trim(), createdBy: user?.id || '', createdTime: Math.floor(Date.now() / 1000), imageArr, userDetails: [{ userId: user?.id || '', fullName: user?.name, imageDetails: user?.imageUrl ? { imgLink: user.imageUrl } : undefined }] });
+      else
+        onCreated({
+          statusPostId: id || Date.now(),
+          caption: wasPoll ? '' : caption,
+          createdBy: user?.id || '',
+          createdTime: Math.floor(Date.now() / 1000),
+          imageArr,
+          userDetails: [{ userId: user?.id || '', fullName: user?.name, imageDetails: user?.imageUrl ? { imgLink: user.imageUrl } : undefined }],
+        });
     } catch (e) {
       toast.error(errMsg(e, 'Could not create post. Please try again.'));
     } finally {
       setBusy(null);
+      setProgress(null);
     }
+  };
+
+  const togglePoll = () => {
+    if (!pollOn && files.length) {
+      toast.error('Remove photo and video attachments before creating a poll.');
+      return;
+    }
+    setPollOn((v) => !v);
+    setFocused(true);
+    mention.close();
+    requestAnimationFrame(() => taRef.current?.focus());
+  };
+
+  const onPick = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const fl: File[] = e.target.files ? Array.from(e.target.files) : [];
+    e.target.value = '';
+    void addFiles(fl);
   };
 
   return (
     <div
-      className={'hp-composer' + (expanded ? ' open' : '')}
+      className={'hp-composer' + (expanded ? ' open' : '') + (keep ? ' keep' : '')}
       onDragOver={(e) => e.preventDefault()}
       onDrop={(e) => {
         e.preventDefault();
-        addFiles(e.dataTransfer.files);
+        void addFiles(e.dataTransfer.files);
       }}
     >
       <div className="hp-composer-top">
@@ -192,20 +236,20 @@ export function Composer({ onCreated }: { onCreated: (p: Post) => void }) {
           className="hp-composer-input"
           rows={expanded ? 3 : 1}
           placeholder={pollOn ? 'Ask a question…' : 'Create a post… add #hashtags'}
+          aria-label={pollOn ? 'Poll question' : 'Create a post'}
           value={text}
-          maxLength={pollOn ? 280 : undefined}
           disabled={!!busy}
           onFocus={() => setFocused(true)}
           onChange={(e) => {
             setText(e.target.value);
-            if (!pollOn) detectMention(e.target.value, e.target.selectionStart ?? e.target.value.length);
+            if (!pollOn) mention.detect(e.target.value, e.target.selectionStart ?? e.target.value.length);
           }}
-          onBlur={() => setTimeout(() => setMq(null), 200)}
+          onBlur={() => setTimeout(mention.close, 200)}
           onPaste={(e) => {
             const fs = Array.from(e.clipboardData.files || []) as File[];
             if (fs.length) {
               e.preventDefault();
-              addFiles(fs);
+              void addFiles(fs);
             }
           }}
           onKeyDown={(e) => {
@@ -214,27 +258,23 @@ export function Composer({ onCreated }: { onCreated: (p: Post) => void }) {
         />
       </div>
 
-      {mq && mq.q.trim() && (
-        <div className="hp-mentions" role="listbox" aria-label="Tag someone">
-          {people.map((p) => (
-            <button key={p.userId} type="button" role="option" className="hp-mention-opt" onMouseDown={(e) => e.preventDefault()} onClick={() => pickPerson(p)}>
-              <Avatar src={p.avatar} name={p.name} size={30} />
-              <span className="grow ellipsis">
-                <b>{p.name}</b>
-                {p.profession && <span className="muted tiny"> · {p.profession}</span>}
-              </span>
-            </button>
-          ))}
-          {!people.length && <div className="muted small" style={{ padding: '8px 12px' }}>{peopleBusy ? 'Searching…' : 'No one found. Try their full name or surname.'}</div>}
-        </div>
-      )}
+      {!pollOn && mention.list}
 
       {files.length > 0 && (
         <div className="hp-thumbs">
-          {files.map((f, i) => (
-            <div className="hp-thumb" key={f.url}>
-              <img src={f.url} alt="" />
-              <button aria-label="Remove image" onClick={() => removeFile(i)} disabled={!!busy}>
+          {files.map((f) => (
+            <div className={'hp-thumb' + (f.kind === 'video' ? ' hp-thumb-video' : '')} key={f.id}>
+              {f.kind === 'video' ? (
+                <>
+                  <video src={f.url + '#t=0.1'} muted playsInline preload="metadata" />
+                  <span className="hp-thumb-badge">
+                    <I name="video" size={12} /> {fmtDur(f.seconds) || 'Video'}
+                  </span>
+                </>
+              ) : (
+                <img src={f.url} alt="" />
+              )}
+              <button type="button" aria-label={f.kind === 'video' ? 'Remove video' : 'Remove image'} onClick={() => removeFile(f.id)} disabled={!!busy}>
                 <Icon name="close" size={14} />
               </button>
             </div>
@@ -244,90 +284,78 @@ export function Composer({ onCreated }: { onCreated: (p: Post) => void }) {
 
       {pollOn && (
         <div className="hp-poll-edit">
+          <div className="hp-poll-head">
+            <b className="small">Poll options</b>
+            <span className={'tiny ' + (qLen > POLL_MAX ? 'hp-err' : 'muted')}>
+              Question {qLen}/{POLL_MAX}
+            </span>
+          </div>
           {options.map((o, i) => (
-            <div className="row" key={i}>
+            <div className="hp-pe-opt" key={i}>
               <input
                 className="input"
                 placeholder={`Option ${i + 1}`}
+                aria-label={`Option ${i + 1}`}
                 maxLength={80}
                 value={o}
                 disabled={!!busy}
                 onChange={(e) => setOptions((prev) => prev.map((x, j) => (j === i ? e.target.value : x)))}
               />
               {options.length > 2 && (
-                <button className="icon-btn" aria-label="Remove option" onClick={() => setOptions((prev) => prev.filter((_, j) => j !== i))}>
+                <button type="button" className="icon-btn" aria-label={`Remove option ${i + 1}`} disabled={!!busy} onClick={() => setOptions((prev) => prev.filter((_, j) => j !== i))}>
                   <Icon name="close" size={18} />
                 </button>
               )}
             </div>
           ))}
-          <div className="row between">
-            {options.length < 4 ? (
-              <button className="btn btn-ghost btn-sm" onClick={() => setOptions((p) => [...p, ''])}>
-                <Icon name="plus" size={16} /> Add option
-              </button>
-            ) : (
-              <span />
-            )}
-            <div className="row" style={{ gap: 6 }}>
-              <span className="muted small">Duration</span>
+          {options.length < 4 && (
+            <button type="button" className="btn btn-ghost btn-sm hp-poll-add" disabled={!!busy} onClick={() => setOptions((p) => [...p, ''])}>
+              <Icon name="plus" size={16} /> Add option
+            </button>
+          )}
+          <div className="hp-poll-dur">
+            <span className="muted small">Poll length</span>
+            <div className="hp-poll-dur-chips" role="radiogroup" aria-label="Poll length">
               {DURATIONS.map((d) => (
-                <button key={d} className={'chip' + (duration === d ? ' active' : '')} onClick={() => setDuration(d)}>
+                <button type="button" key={d} role="radio" aria-checked={duration === d} className={'chip' + (duration === d ? ' active' : '')} disabled={!!busy} onClick={() => setDuration(d)}>
                   {d}h
                 </button>
               ))}
             </div>
           </div>
+          {!optsUnique && <div className="tiny hp-err">Poll options must be different.</div>}
         </div>
       )}
 
-      {videoNote && (
-        <div className="hp-note">
-          <div className="grow">
-            <b>Video posts are uploaded from the i'llTip app.</b>
-            <div className="muted small">Videos are compressed on your phone before upload, so this step needs the app.</div>
+      {progress != null && (
+        <div className="hp-upload" role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(progress * 100)} aria-label="Upload progress">
+          <div className="hp-upload-track">
+            <div className="hp-upload-fill" style={{ width: `${Math.max(3, Math.round(progress * 100))}%` }} />
           </div>
-          <div className="row-wrap">
-            <a className="btn btn-sm btn-dark" href={APP_LINKS.ios} target="_blank" rel="noreferrer">
-              App Store
-            </a>
-            <a className="btn btn-sm btn-dark" href={APP_LINKS.android} target="_blank" rel="noreferrer">
-              Google Play
-            </a>
-            <button className="icon-btn" aria-label="Dismiss" onClick={() => setVideoNote(false)}>
-              <Icon name="close" size={18} />
-            </button>
-          </div>
+          <span className="tiny muted">{busy}</span>
         </div>
       )}
 
       <div className="hp-composer-bar">
-        <input ref={fileRef} type="file" accept="image/*,video/*" multiple hidden onChange={(e) => (addFiles(e.target.files), (e.target.value = ''))} />
-        <button className="hp-tool" disabled={!!busy || pollOn || files.length >= MAX_ATTACHMENTS} onClick={() => fileRef.current?.click()} title="Add photos">
-          <Icon name="image" size={20} /> <span>Photo</span>
-        </button>
-        <button className="hp-tool" disabled={!!busy} onClick={() => setVideoNote(true)} title="Add a video">
-          <I name="video" size={20} /> <span>Video</span>
-        </button>
-        <button
-          className={'hp-tool' + (pollOn ? ' on' : '')}
-          disabled={!!busy}
-          onClick={() => {
-            if (!pollOn && files.length) {
-              toast.error('Remove photo attachments before creating a poll.');
-              return;
-            }
-            setPollOn((v) => !v);
-            setFocused(true);
-          }}
-          title="Create poll"
-        >
-          <I name="poll" size={20} /> <span>Poll</span>
-        </button>
-        <span className="grow" />
-        {pollOn && <span className={'tiny ' + (text.trim().length > 280 ? 'hp-err' : 'muted')}>{text.trim().length}/280</span>}
-        <button className="btn btn-sm hp-post-btn" disabled={!canPost} onClick={submit}>
-          {busy || 'Post'}
+        <div className="hp-tools">
+          <label className={'hp-tool hp-tool-photo' + (mediaDisabled ? ' disabled' : '')} title="Add photos" aria-disabled={mediaDisabled}>
+            <input className="hp-file" type="file" accept="image/*" multiple disabled={mediaDisabled} onChange={onPick} aria-label="Add photos" />
+            <Icon name="image" size={20} />
+            <span>Photo</span>
+          </label>
+          <label className={'hp-tool hp-tool-video' + (mediaDisabled ? ' disabled' : '')} title="Add a video" aria-disabled={mediaDisabled}>
+            <input className="hp-file" type="file" accept="video/*" disabled={mediaDisabled} onChange={onPick} aria-label="Add a video" />
+            <I name="video" size={20} />
+            <span>Video</span>
+          </label>
+          <button type="button" className={'hp-tool hp-tool-poll' + (pollOn ? ' on' : '')} disabled={!!busy} onClick={togglePoll} title={pollOn ? 'Remove poll' : 'Poll'} aria-label={pollOn ? 'Remove poll' : 'Poll'} aria-pressed={pollOn}>
+            <I name="poll" size={20} />
+            <span>Poll</span>
+          </button>
+        </div>
+        {checking && <span className="tiny muted hp-checking">Checking video…</span>}
+        <button type="button" className="btn btn-sm hp-post-btn" disabled={!canPost} onClick={submit}>
+          {busy ? (progress != null ? `${Math.round(progress * 100)}%` : 'Posting…') : 'Post'}
         </button>
       </div>
     </div>
