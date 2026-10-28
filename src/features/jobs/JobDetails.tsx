@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../lib/auth';
+import { track } from '../../lib/analytics';
 import { Link, goBack, useParams } from '../../lib/router';
 import { Avatar, ErrorBox, Modal, Spinner, timeAgo, toast } from '../../ui/kit';
 import { ConfirmModal, JIcon, JobThumb, ResumeDoc, ResumeViewer, StatusPill, UpgradeModal, VerifiedBadge } from './components';
@@ -83,6 +84,14 @@ export function JobDetailsPage() {
 
   const job = useMemo(() => (row ? mapJob(row, user?.id, services.data) : null), [row, user?.id, services.data]);
   const isPoster = !!job && !!user?.id && String(row?.userId ?? job.posterId).trim() === user.id;
+
+  // Analytics: one "Job Viewed" per job opened (once the job has loaded).
+  const tracked = useRef('');
+  useEffect(() => {
+    if (!job || tracked.current === id) return;
+    tracked.current = id;
+    track('Job Viewed', { jobId: job.numericId || id, category: job.category || null, isExternal: !!job.link, workMode: job.workMode || null, isPoster });
+  }, [job, id, isPoster]);
 
   // Record a unique view (not for the poster) — JobDetailsScreen useFocusEffect
   const viewed = useRef('');
@@ -489,7 +498,9 @@ function ApplyPanel({ job, row, onApplied, refreshing }: { job: ReturnType<typeo
     setChecking(true);
     const status = await fetchSubscriptionStatus();
     setChecking(false);
-    if (!hasAccess(status, 'career')) {
+    const subscribed = hasAccess(status, 'career');
+    track('Apply Tapped', { jobId: job.numericId || job.id, category: job.category || null, isExternal: !!job.link, subscribed });
+    if (!subscribed) {
       setGate(CAREER_GATE);
       return;
     }

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import type { RouteDef } from '../../lib/router';
 import { Link, navigate, useQueryParams } from '../../lib/router';
 import { useAuth } from '../../lib/auth';
+import { track } from '../../lib/analytics';
 import { AuthLayout, FormError, PasswordInput } from './AuthLayout';
 import { RegisterPage } from './RegisterPage';
 import { VerifyEmailPage } from './VerifyEmailPage';
@@ -32,6 +33,7 @@ function LoginPage() {
     setBusy(true);
     try {
       const s = await login(email, password);
+      track('Login Completed', { method: 'email', emailVerified: s.user.emailVerified === true, roleSelected: s.user.roleSelected === true });
       routeAfterAuth(s.user, qp.get('next'));
     } catch (e: any) {
       setErr(e?.message || 'Login failed.');

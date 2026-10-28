@@ -4,6 +4,7 @@
  * Routes are patterns like "/jobs/:id". Use <Link to="/jobs/1">, navigate('/x'), useParams(), useQueryParams().
  */
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { trackPageView } from './analytics';
 
 /** Base path from <base href="/app/"> (no trailing slash), '' at the site root. */
 export const BASE = (() => {
@@ -41,6 +42,21 @@ try {
 }
 
 const EVT = 'illtip:navigate';
+
+// Analytics: one "Page View" per route change (navigate(), Back/Forward, and the first load).
+// trackPageView is a no-op outside the live build and debounces redirect chains.
+function reportPageView() {
+  try {
+    trackPageView(currentPath().split('?')[0]);
+  } catch {
+    /* analytics must never break routing */
+  }
+}
+if (typeof window !== 'undefined') {
+  window.addEventListener(EVT, reportPageView);
+  window.addEventListener('popstate', reportPageView);
+  reportPageView();
+}
 
 export function navigate(to: string, opts: { replace?: boolean } = {}) {
   if (to.startsWith('#/')) to = to.slice(1);

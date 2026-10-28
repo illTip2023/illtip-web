@@ -1,5 +1,6 @@
-import React, { createContext, useContext, useEffect, useState } from 'react';
+import React, { createContext, useContext, useEffect, useRef, useState } from 'react';
 import { api, loadSession, onSession, saveSession, Session } from './api';
+import { identifyUser, reset as resetAnalytics } from './analytics';
 import { normalizeImageDetails, pickDisplayableImageUri } from './images';
 
 type AuthCtx = {
@@ -39,6 +40,21 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       off();
     };
   }, []);
+
+  // Analytics identity: identify on login / sign-up / restored session, reset on logout (or a dead session).
+  // Only id, name and email are sent from here (never phone, tokens or passwords).
+  const userId = session?.user.id ?? '';
+  const hadUser = useRef(false);
+  useEffect(() => {
+    if (userId && session) {
+      hadUser.current = true;
+      identifyUser({ id: userId, name: session.user.name, email: session.user.email });
+    } else if (hadUser.current) {
+      hadUser.current = false;
+      resetAnalytics();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId, session?.user.name, session?.user.email]);
 
   const value: AuthCtx = {
     session,

@@ -15,6 +15,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { api, ApiError } from '../../lib/api';
 import { compactNumber, toast } from '../../ui/kit';
+import { track } from '../../lib/analytics';
 import { BuyCoinsModal } from '../coins/BuyCoins';
 import { dropCoin } from '../coins/CoinRain';
 import { coinTotal, fetchCoinBalance, isSponsored, type Post } from './api';
@@ -125,6 +126,7 @@ export function useComboTip(post: Post) {
       patchPost(id, (old) => ({ coins: (old.coins ?? coinTotal(post)) + coins }));
       sendCoins(post, coins)
         .then((res) => {
+          track('Tip Sent', { target: 'post', postId: id, coins, source: coins === 1 ? 'combo_tap' : 'gift' });
           const b = balanceFrom(res);
           if (b != null) coinStore.set(Math.max(0, b));
           else coinStore.set((v) => Math.max(0, (v ?? 0) - coins));

@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { AutoVideo } from '../../ui/AutoVideo';
 import { currentPath, Link, navigate } from '../../lib/router';
 import { useAuth } from '../../lib/auth';
+import { track } from '../../lib/analytics';
 import { BuyCoinsFlow, BuyCoinsPrompt, stepTitle as buyStepTitle } from '../coins/BuyCoins';
 import { rainCoins } from '../coins/CoinRain';
 import { setQueryData, invalidate, useQuery } from '../../lib/query';
@@ -354,6 +355,7 @@ export function TipModal({ post, open, onClose }: { post: Post; open: boolean; o
     setBusy(true);
     try {
       const res = await tipPost(post, n);
+      track('Tip Sent', { target: 'post', postId: Number(post.statusPostId), coins: n, source: 'tip_sheet' });
       const nb = Number(res?.coinBalance);
       coinStore.set(Number.isFinite(nb) ? nb : Math.max(0, (balance ?? n) - n));
       patchPost(Number(post.statusPostId), (old) => ({ coins: (old.coins ?? coinTotal(post)) + n }));

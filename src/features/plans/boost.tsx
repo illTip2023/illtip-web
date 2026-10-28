@@ -13,6 +13,7 @@ import { createPortal } from 'react-dom';
 import { api, unwrap } from '../../lib/api';
 import { useQuery } from '../../lib/query';
 import { Modal } from '../../ui/kit';
+import { track } from '../../lib/analytics';
 import { clearPending, fetchPlans, fetchStatusStrict, formatPrice, PLANS_KEY, pollUntilActive, setStatusCache, type SubscriptionPlan } from './api';
 import { ConfirmingBody, useCheckoutFlow } from './checkout';
 
@@ -158,6 +159,8 @@ export function BoostCheckoutModal({
     if (!alive.current) return;
     if (r.confirmed) {
       clearPending();
+      // Credit bought in-page (Stripe); the caller publishes / boosts the post next.
+      track('Boost Purchased', { planId: BOOST_PLAN_ID, catalog: 'flat', provider: 'stripe', flow: 'in_page' });
       setStage({ k: 'summary' });
       onConfirmed();
     } else setStage({ k: 'pending' });

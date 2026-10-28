@@ -3,6 +3,7 @@ import React, { useEffect, useState } from 'react';
 import { Link, navigate, useQueryParams } from '../../lib/router';
 import { saveSession } from '../../lib/api';
 import { sessionFromAuthResponse } from '../../lib/auth';
+import { track } from '../../lib/analytics';
 import { toast } from '../../ui/kit';
 import { APP_LINKS } from '../../lib/env';
 import { AuthLayout, FormError, PasswordInput } from './AuthLayout';
@@ -82,6 +83,7 @@ export function RegisterPage() {
         return;
       }
       clearPendingReferral();
+      track('Sign Up Completed', { method: 'email', hasReferralCode: !!code });
       saveSignupContact({ email: mail, name, phone: phoneStored });
       // registerV2 normally answers without tokens (the session comes from the OTP step); store one if the API sends it.
       if (res.data?.accessToken) {

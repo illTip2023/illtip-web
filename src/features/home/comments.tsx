@@ -11,6 +11,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Link } from '../../lib/router';
 import { useAuth } from '../../lib/auth';
+import { track } from '../../lib/analytics';
 import { setQueryData, useQuery } from '../../lib/query';
 import { Avatar, Icon, compactNumber, toast } from '../../ui/kit';
 import { BuyCoinsModal } from '../coins/BuyCoins';
@@ -260,6 +261,7 @@ export function useCommentThread(post: Post) {
     patchCoins(cid, 1);
     try {
       const res = await tipComment(post, cid, 1);
+      track('Tip Sent', { target: 'comment', postId: Number(post.statusPostId), commentId: cid, coins: 1, source: 'comment' });
       const b = balanceFrom(res);
       if (b != null) coinStore.set(Math.max(0, b));
       else coinStore.set((v) => Math.max(0, (v ?? 1) - 1));

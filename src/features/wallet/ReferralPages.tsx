@@ -1,5 +1,6 @@
 /** /referral (ReferralEarningsScreen share block + ReferralCodeScreen), /referral/earnings, /referral/history. */
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
+import { track } from '../../lib/analytics';
 import { Link, navigate } from '../../lib/router';
 import { invalidate, useInfinite, useOnVisible } from '../../lib/query';
 import { useAuth } from '../../lib/auth';
@@ -33,6 +34,7 @@ function ShareBlock({ code, url }: { code: string; url: string }) {
   const [copied, setCopied] = useState<'' | 'link' | 'code'>('');
   async function copy(what: 'link' | 'code') {
     if (await copyText(what === 'link' ? url : code)) {
+      track('Referral Link Copied', { what });
       setCopied(what);
       toast.ok(what === 'link' ? 'Referral link copied' : 'Referral code copied');
       setTimeout(() => setCopied(''), 2000);
@@ -43,12 +45,14 @@ function ShareBlock({ code, url }: { code: string; url: string }) {
     if (navigator.share) {
       try {
         await navigator.share({ title: "Join me on i'llTip", text, url });
+        track('Referral Link Shared', { channel: 'native' });
       } catch {
         /* cancelled */
       }
     } else copy('link');
   }
   const enc = encodeURIComponent(`Join i'llTip using my referral link: ${url}`);
+  const shared = (channel: string) => () => track('Referral Link Shared', { channel });
   return (
     <div className="wl-share">
       <div className="wl-code-label">Your referral code</div>
@@ -66,10 +70,10 @@ function ShareBlock({ code, url }: { code: string; url: string }) {
         <button type="button" className="btn btn-dark btn-sm" onClick={share}>
           <Icon name="share" size={16} /> Share Link
         </button>
-        <a className="btn btn-ghost btn-sm" href={`https://wa.me/?text=${enc}`} target="_blank" rel="noreferrer">WhatsApp</a>
-        <a className="btn btn-ghost btn-sm" href={`https://twitter.com/intent/tweet?text=${enc}`} target="_blank" rel="noreferrer">X</a>
-        <a className="btn btn-ghost btn-sm" href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`} target="_blank" rel="noreferrer">Facebook</a>
-        <a className="btn btn-ghost btn-sm" href={`mailto:?subject=${encodeURIComponent("Join me on i'llTip")}&body=${enc}`}>Email</a>
+        <a className="btn btn-ghost btn-sm" href={`https://wa.me/?text=${enc}`} onClick={shared('whatsapp')} target="_blank" rel="noreferrer">WhatsApp</a>
+        <a className="btn btn-ghost btn-sm" href={`https://twitter.com/intent/tweet?text=${enc}`} onClick={shared('x')} target="_blank" rel="noreferrer">X</a>
+        <a className="btn btn-ghost btn-sm" href={`https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(url)}`} onClick={shared('facebook')} target="_blank" rel="noreferrer">Facebook</a>
+        <a className="btn btn-ghost btn-sm" href={`mailto:?subject=${encodeURIComponent("Join me on i'llTip")}&body=${enc}`} onClick={shared('email')}>Email</a>
       </div>
     </div>
   );
@@ -128,6 +132,7 @@ function ApplyCodeCard() {
 }
 
 export function ReferralPage() {
+  useEarningsViewed('referral');
   const q = useReferralDashboard();
   const d = q.data;
   const reward = d ? money(d.rewardPerReferral.amount, d.rewardPerReferral.currency) : '';
@@ -206,7 +211,15 @@ export function ReferralPage() {
   );
 }
 
+/** Analytics: "Referral Earnings Viewed" once per visit to a referral earnings screen. */
+function useEarningsViewed(screen: 'referral' | 'earnings') {
+  useEffect(() => {
+    track('Referral Earnings Viewed', { screen });
+  }, [screen]);
+}
+
 export function ReferralEarningsPage() {
+  useEarningsViewed('earnings');
   const q = useReferralDashboard();
   const d = q.data;
   const cur = d?.wallet.currency ?? 'USD';

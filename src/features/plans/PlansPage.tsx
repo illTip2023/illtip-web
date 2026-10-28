@@ -6,6 +6,7 @@
  */
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { APP_LINKS } from '../../lib/env';
+import { previousPath, track } from '../../lib/analytics';
 import { navigate, useQueryParams } from '../../lib/router';
 import { useQuery } from '../../lib/query';
 import { ErrorBox, Modal, PageHeader, Spinner, toast } from '../../ui/kit';
@@ -46,6 +47,23 @@ export function PlansPage() {
   const status = useQuery(STATUS_KEY, fetchStatus, { staleMs: 30_000 });
   const checkout = useCheckoutFlow({ next });
   const [confirmUpgrade, setConfirmUpgrade] = useState<SubscriptionPlan | null>(null);
+
+  // Analytics: "Paywall Viewed" once per visit when the user has no plan for what they came for.
+  const paywallSent = useRef(false);
+  const [cameFrom] = useState(() => previousPath()); // read now, before this page's own Page View is recorded
+  useEffect(() => {
+    if (paywallSent.current || !status.data) return;
+    const subscribed = flow ? hasEffectiveAccess(status.data, flow) : activeCatalogs(status.data).length > 0;
+    if (subscribed) return;
+    paywallSent.current = true;
+    const from = (next || (cameFrom !== '/plans' ? cameFrom : '') || '').split('?')[0];
+    track('Paywall Viewed', {
+      source: from ? from.split('/')[1] || 'home' : 'direct',
+      source_path: from || null,
+      catalog: flow || listCatalog || 'all',
+      plan: planParam || null,
+    });
+  }, [status.data]); // eslint-disable-line react-hooks/exhaustive-deps
 
   /** completeWithPlan / handleGetStarted from the app. */
   const choose = (planId: string) => {

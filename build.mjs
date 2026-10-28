@@ -2,6 +2,7 @@
 // Bundles src/main.tsx with esbuild into dist/ (app.js, app.css, index.html, static files from public/).
 // --base=/app/ serves the app under a sub-path (preview); default '/'.
 // --prod makes the LIVE backend the default (only after Bosun approves); otherwise the default is the DEV backend.
+// Mixpanel analytics are compiled in only for --prod with --base=/ (the live www.illtip.com build).
 // Locally, packages resolve from node_modules or NODE_PATH (e.g. /opt/npm-tools/node_modules).
 import { build, context } from 'esbuild';
 import fs from 'node:fs';
@@ -31,6 +32,9 @@ const opts = {
   define: {
     'process.env.NODE_ENV': watch ? '"development"' : '"production"',
     'globalThis.__ILLTIP_DEFAULT_ENV__': prod ? '"PROD"' : '"DEV"',
+    // Mixpanel (src/lib/analytics.ts) only in the live build: --prod served at the site root.
+    // Preview builds under a sub-path (--base=/web/) and dev builds never load it.
+    'globalThis.__ILLTIP_ANALYTICS__': prod && base === '/' ? 'true' : 'false',
   },
   nodePaths: (process.env.NODE_PATH || '').split(':').filter(Boolean),
   logLevel: 'info',
@@ -43,5 +47,5 @@ if (watch) {
   console.log(`dev server http://localhost:${port}`);
 } else {
   await build(opts);
-  console.log(`built ${out}/ (${prod ? 'PROD' : 'DEV'} default backend)`);
+  console.log(`built ${out}/ (${prod ? 'PROD' : 'DEV'} default backend, analytics ${prod && base === '/' ? 'ON' : 'off'})`);
 }

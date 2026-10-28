@@ -38,6 +38,8 @@ function page(html, p, body) {
 const browser = await chromium.launch();
 const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
 await ctx.route(/illtipadmins\.com/, (r) => r.abort());
+// The live bundle has Mixpanel on: never send analytics from the pre-render browser.
+await ctx.route(/mxpnl\.com|mixpanel\.com/, (r) => r.abort());
 for (const p of pages) {
   let body = null;
   if (p.path !== '/' && p.path !== '/information') {

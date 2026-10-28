@@ -2,6 +2,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { navigate, useQueryParams } from '../../lib/router';
 import { useAuth } from '../../lib/auth';
+import { setUserProperties } from '../../lib/analytics';
 import { useQuery } from '../../lib/query';
 import { Icon, Modal, Spinner, toast } from '../../ui/kit';
 import { AuthLayout, FormError } from './AuthLayout';
@@ -214,6 +215,7 @@ export function RoleFinishPage() {
       const res = await completeRoleV2(role, buildProfile());
       if (!res.success) return setErr(res.message || 'Could not save your profile. Please try again.');
       updateUser({ roleSelected: true, emailVerified: true });
+      setUserProperties({ userRole: role });
       toast.ok('Profile saved.');
       // Same as the app: confirm → freelancers to Jobs, employers to Hire Pros; skip → Home.
       navigate(skipped ? '/' : isCustomer ? '/hire' : '/jobs', { replace: true });

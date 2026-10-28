@@ -11,6 +11,7 @@ import { Empty, Toaster } from './ui/kit';
 import { applyTheme, getThemePref } from './features/settings/theme';
 import { oldSharedLinkRedirect } from './features/legacy/LegacyPages';
 import { BASE } from './lib/router';
+import { initAnalytics } from './lib/analytics';
 import SEO_PAGES from './seo-pages.json';
 
 function NotFound() {
@@ -90,6 +91,8 @@ function App() {
   return <Shell>{view}</Shell>;
 }
 
+// Mixpanel: live build only (no-op elsewhere); the library itself loads async after the page.
+initAnalytics();
 const redirected = oldSharedLinkRedirect(location.pathname.slice(BASE.length) || '/', location.search);
 applyTheme(getThemePref());
 installLinkInterceptor();

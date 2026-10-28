@@ -9,6 +9,7 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../lib/auth';
+import { track } from '../../lib/analytics';
 import { ENV_NAME, STRIPE_PUBLISHABLE_KEY } from '../../lib/env';
 import { href, navigate } from '../../lib/router';
 import { Modal, toast } from '../../ui/kit';
@@ -33,6 +34,19 @@ export function chargeLabel(plan: SubscriptionPlan | undefined, upgrade: boolean
   if (!plan) return null;
   if (upgrade) return plan.upgrade ? formatPrice(plan.upgrade.amount, plan.upgrade.currency) : null;
   return formatPrice(plan.resolvedPrice, plan.resolvedCurrency);
+}
+
+/** Shared analytics properties for a plan purchase (prices only as the API gives them). */
+export function planProps(plan: SubscriptionPlan, upgrade: boolean, provider?: string | null) {
+  return {
+    planId: plan.planId,
+    catalog: plan.catalog,
+    provider: provider || plan.resolvedProvider || null,
+    upgrade,
+    product: plan.planId === 'boost-post' ? 'boost' : 'subscription',
+    amount: upgrade ? plan.upgrade?.amount ?? null : plan.resolvedPrice,
+    currency: upgrade ? plan.upgrade?.currency ?? null : plan.resolvedCurrency,
+  };
 }
 
 export function stripeReturnUrl() {
@@ -97,6 +111,7 @@ export function useCheckoutFlow({ next, onPaid }: { next?: string | null; onPaid
       const key = plan.planId + (upgrade ? ':upgrade' : '');
       const cached = reuse.current.get(key);
       const checkout = cached && Date.now() - cached.at < CHECKOUT_REUSE_MS ? cached.checkout : await createCheckout(plan.planId, user?.email, upgrade);
+      track('Checkout Started', planProps(plan, upgrade, checkout.provider));
       if (checkout.provider === 'paystack') {
         if (!/^https:\/\/([a-z0-9-]+\.)*paystack\.(com|co)\//i.test(checkout.authorizationUrl || '')) throw new Error('Payment page could not be opened. Please try again.');
         savePending({ provider: 'paystack', planId: plan.planId, catalog: plan.catalog, upgrade, next: next || undefined, reference: checkout.reference, startedAt: Date.now() });
@@ -108,6 +123,7 @@ export function useCheckoutFlow({ next, onPaid }: { next?: string | null; onPaid
       reuse.current.set(key, { at: cached?.at ?? Date.now(), checkout });
       if (alive.current) setPhase({ k: 'stripe', plan, upgrade, checkout });
     } catch (e: any) {
+      track('Checkout Failed', { ...planProps(plan, upgrade), stage: 'start', reason: String(e?.message || 'unknown').slice(0, 200) });
       toast.error(e?.message || 'Payment failed. Please try again.');
       if (alive.current) setPhase({ k: 'idle' });
     } finally {
@@ -127,6 +143,7 @@ export function useCheckoutFlow({ next, onPaid }: { next?: string | null; onPaid
     const r = await pollUntilActive(plan.catalog, plan.planId, { isCancelled: () => !alive.current });
     inFlight.current = false;
     clearPending();
+    if (r.confirmed) track('Subscription Purchased', { ...planProps(plan, upgrade, 'stripe'), flow: 'in_page' });
     if (alive.current) setPhase({ k: 'done', plan, upgrade, confirmed: r.confirmed });
   };
 
@@ -318,6 +335,7 @@ function StripePayModal({
       });
       if (err) {
         clearPending();
+        track('Checkout Failed', { ...planProps(plan, upgrade, 'stripe'), stage: 'payment', reason: String(err.code || err.type || err.message || 'unknown').slice(0, 200) });
         setError(err.message || 'Payment failed. Please try again.');
         setPaying(false);
         return;
@@ -328,10 +346,12 @@ function StripePayModal({
         return;
       }
       clearPending();
+      track('Checkout Failed', { ...planProps(plan, upgrade, 'stripe'), stage: 'payment', reason: 'status_' + String(st || 'unknown') });
       setError('Payment was not completed. Please try again.');
       setPaying(false);
     } catch (e: any) {
       clearPending();
+      track('Checkout Failed', { ...planProps(plan, upgrade, 'stripe'), stage: 'payment', reason: String(e?.message || 'unknown').slice(0, 200) });
       setError(e?.message || 'Payment failed. Please try again.');
       setPaying(false);
     }

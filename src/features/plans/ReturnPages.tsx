@@ -8,6 +8,7 @@
  */
 import React, { useEffect, useRef, useState } from 'react';
 import { STRIPE_PUBLISHABLE_KEY } from '../../lib/env';
+import { track } from '../../lib/analytics';
 import { navigate } from '../../lib/router';
 import { PageHeader } from '../../ui/kit';
 import { clearPending, fetchStatus, pollUntilActive, readPending, refreshSubscriptionQueries, safeNext, type PendingPurchase } from './api';
@@ -54,17 +55,47 @@ async function confirmPending(pending: PendingPurchase | null, isCancelled: () =
   if (pending) {
     const r = await pollUntilActive(pending.catalog, pending.planId, { isCancelled });
     if (r.confirmed) clearPending();
+    const props = { planId: pending.planId, catalog: pending.catalog, provider: pending.provider, upgrade: !!pending.upgrade, flow: 'redirect' };
     // Boost Post bought from the composer / a post's menu: publish or boost it now that the credit is there.
     if (r.confirmed && pending.planId === BOOST_PLAN_ID) {
       const draft = takeBoostDraft();
-      return { k: 'done', confirmed: true, boost: draft ? await finishBoostDraft(draft) : 'no-draft' };
+      const outcome = draft ? await finishBoostDraft(draft) : 'no-draft';
+      trackBoostOutcome(outcome, props);
+      return { k: 'done', confirmed: true, boost: outcome };
     }
+    if (r.confirmed) track('Subscription Purchased', { ...props, product: 'subscription' });
     return { k: 'done', confirmed: r.confirmed };
   }
   // No record of what was bought (e.g. a different browser tab): one fresh status read, then a neutral message.
   const s = await fetchStatus();
   refreshSubscriptionQueries(s);
   return { k: 'done', confirmed: false };
+}
+
+function trackBoostOutcome(outcome: BoostOutcome | 'no-draft', props: Record<string, unknown>) {
+  if (outcome === 'no-draft') {
+    track('Boost Purchased', { ...props, kind: 'credit_only', applied: false });
+    return;
+  }
+  track('Boost Purchased', {
+    ...props,
+    kind: outcome.kind,
+    applied: outcome.ok && (outcome.kind === 'existing' || (outcome as { boosted?: boolean }).boosted === true),
+    postId: outcome.ok ? outcome.id : null,
+  });
+  if (outcome.ok && outcome.kind === 'new') track('Post Created', { postId: outcome.id, boosted: outcome.boosted, source: 'boost_checkout' });
+}
+
+function failedPayment(pending: PendingPurchase | null, reason: string) {
+  track('Checkout Failed', {
+    planId: pending?.planId ?? null,
+    catalog: pending?.catalog ?? null,
+    provider: 'stripe',
+    upgrade: !!pending?.upgrade,
+    product: pending?.planId === BOOST_PLAN_ID ? 'boost' : 'subscription',
+    stage: 'return',
+    reason,
+  });
 }
 
 function BoostResult({ outcome, next }: { outcome: BoostOutcome | 'no-draft'; next: string }) {
@@ -143,6 +174,7 @@ export function StripeReturnPage() {
     const redirectStatus = q.get('redirect_status');
     const clientSecret = q.get('payment_intent_client_secret');
     if (redirectStatus === 'failed') {
+      failedPayment(pending, 'redirect_failed');
       clearPending();
       if (pending?.planId === BOOST_PLAN_ID) clearBoostDraft();
       return { k: 'failed', message: 'Your bank or card provider declined the payment. You have not been charged.' };
@@ -153,6 +185,7 @@ export function StripeReturnPage() {
         const { paymentIntent } = await stripe.retrievePaymentIntent(clientSecret);
         const st = paymentIntent?.status;
         if (st === 'requires_payment_method' || st === 'canceled') {
+          failedPayment(pending, 'status_' + st);
           clearPending();
           if (pending?.planId === BOOST_PLAN_ID) clearBoostDraft();
           return { k: 'failed', message: 'The payment was not completed. Please try again with another payment method.' };

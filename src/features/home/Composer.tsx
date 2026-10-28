@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
 import { useAuth } from '../../lib/auth';
+import { track } from '../../lib/analytics';
 import { Avatar, Icon, toast } from '../../ui/kit';
 import { I } from './icons';
 import { createPost, errMsg, getPost, MAX_ATTACHMENTS, remapMentions, uploadImage, type Post } from './api';
@@ -224,6 +225,14 @@ export function Composer({
       id = r.id;
       boosted = r.boosted;
     } else id = await createPost(body);
+    track('Post Created', {
+      postId: id,
+      type: body.poll ? 'poll' : body.imageArr.length ? (files.some((f) => f.kind === 'video') ? 'video' : 'image') : 'text',
+      mediaCount: body.imageArr.length,
+      hasMentions: !!body.mentions?.length,
+      boosted: boost ? boosted : false,
+      source: sheet ? 'create_sheet' : 'profile',
+    });
     let post: Post | null = null;
     if (id) {
       try {
