@@ -1,11 +1,10 @@
 /** Mirrors illtip-mobile RegisterScreen: same fields, validation order and messages. */
 import React, { useEffect, useState } from 'react';
-import { Link, navigate, useQueryParams } from '../../lib/router';
+import { href, Link, navigate, useQueryParams } from '../../lib/router';
 import { saveSession } from '../../lib/api';
 import { sessionFromAuthResponse } from '../../lib/auth';
 import { track } from '../../lib/analytics';
 import { toast } from '../../ui/kit';
-import { APP_LINKS } from '../../lib/env';
 import { AuthLayout, FormError, PasswordInput } from './AuthLayout';
 import {
   AUTH_FULL_NAME_MAX_LEN,
@@ -154,9 +153,10 @@ export function RegisterPage() {
         </div>
         <p className="tiny muted" style={{ margin: '4px 0 14px' }}>
           By signing up you agree to our{' '}
-          <a href={APP_LINKS.site} target="_blank" rel="noreferrer">Terms &amp; Conditions</a>,{' '}
-          <a href={APP_LINKS.site} target="_blank" rel="noreferrer">EULA</a> and{' '}
-          <a href={APP_LINKS.site} target="_blank" rel="noreferrer">Privacy Policy</a>.
+          {/* Open the documents in a new tab so the half-filled form isn't lost (same pages as Settings, no login needed). */}
+          <a href={href('/settings/terms')} target="_blank" rel="noreferrer">Terms &amp; Conditions</a>,{' '}
+          <a href={href('/settings/eula')} target="_blank" rel="noreferrer">EULA</a> and{' '}
+          <a href={href('/settings/privacy')} target="_blank" rel="noreferrer">Privacy Policy</a>.
         </p>
         <FormError msg={err} />
         <button className="btn btn-block btn-dark au-cta" disabled={busy}>
