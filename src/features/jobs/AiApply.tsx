@@ -111,20 +111,27 @@ export function AiApplyCard({ onClick, status }: { onClick: () => void; status: 
 
 const WORK_STEPS = ['Checking the job fits you', 'Tailoring your resume to this job', 'Writing your cover letter', 'Answering the application questions'];
 
-function Working({ label }: { label?: string }) {
+const SEND_STEPS = {
+  email: ['Attaching your tailored resume and cover letter', 'Sending your email to the employer', 'Saving it to your applications'],
+  website: ["Opening the employer's application form", 'Filling in your answers', 'Uploading your tailored resume', 'Submitting and checking it went through'],
+  in_app: ['Attaching your tailored resume', 'Sending your application on i\'llTip'],
+};
+
+function Working({ label, steps = WORK_STEPS }: { label?: string; steps?: string[] }) {
   const [i, setI] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => setI((x) => Math.min(x + 1, WORK_STEPS.length - 1)), 2600);
+    const t = setInterval(() => setI((x) => Math.min(x + 1, Math.max(steps.length - 1, 0))), 2600);
     return () => clearInterval(t);
-  }, []);
+  }, [steps.length]);
   return (
     <div className="aia-working" aria-live="polite">
       <div className="aia-orb" aria-hidden>
         ✨
       </div>
       <div className="aia-working-title">{label || 'Your AI assistant is on it…'}</div>
+      {steps.length > 0 && (
       <ul className="aia-steps">
-        {WORK_STEPS.map((s, k) => (
+        {steps.map((s, k) => (
           <li key={s} className={k < i ? 'done' : k === i ? 'now' : ''}>
             <span className="aia-step-dot">{k < i ? '✓' : ''}</span>
             {s}
@@ -132,6 +139,7 @@ function Working({ label }: { label?: string }) {
           </li>
         ))}
       </ul>
+      )}
     </div>
   );
 }
@@ -294,8 +302,14 @@ export function AiApplyModal({
 
   let body: React.ReactNode = null;
   if (busy === 'prepare' || (!draft && !error)) body = <Working />;
-  else if (busy === 'answer') body = <Working label="Updating your application…" />;
-  else if (busy === 'submit') body = <Working label={draft?.route === 'website' ? "Filling in the employer's form…" : 'Sending your application…'} />;
+  else if (busy === 'answer') body = <Working label="Updating your application…" steps={['Saving your answers', 'Finishing your resume and answers']} />;
+  else if (busy === 'submit')
+    body = (
+      <Working
+        label={draft?.route === 'website' ? "Filling in the employer's form…" : 'Sending your application…'}
+        steps={draft?.route === 'website' && !draft.autoSubmit ? [] : SEND_STEPS[draft?.route || 'email']}
+      />
+    );
   else if (!draft) {
     body = (
       <div className="aia-center">
