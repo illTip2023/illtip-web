@@ -4,6 +4,7 @@ import { track } from '../../lib/analytics';
 import { Link, goBack, useParams } from '../../lib/router';
 import { Avatar, ErrorBox, Modal, Spinner, timeAgo, toast } from '../../ui/kit';
 import { ConfirmModal, JIcon, JobThumb, ResumeDoc, ResumeViewer, StatusPill, UpgradeModal, VerifiedBadge } from './components';
+import { AiApplyCard, AiApplyModal, useAiApplyStatus } from './AiApply';
 import {
   AiSuggestion,
   applyToJob,
@@ -292,6 +293,9 @@ function ApplyPanel({ job, row, onApplied, refreshing }: { job: ReturnType<typeo
   const [submittedResume, setSubmittedResume] = useState<ResumeDetails | null>(null);
   const [viewer, setViewer] = useState<ResumeDetails | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
+  // "Let AI apply for me" (hidden unless the backend reports it enabled)
+  const aiApplyStatus = useAiApplyStatus(!!user?.id);
+  const [aiApplyOpen, setAiApplyOpen] = useState(false);
 
   // AI resume
   const [aiOpen, setAiOpen] = useState(false);
@@ -659,6 +663,16 @@ function ApplyPanel({ job, row, onApplied, refreshing }: { job: ReturnType<typeo
             </button>
           )}
 
+          {aiApplyStatus?.enabled && !closed && job.numericId != null && (
+            <AiApplyCard
+              status={aiApplyStatus}
+              onClick={() => {
+                if (!aiApplyStatus.eligible) setGate(CAREER_GATE);
+                else setAiApplyOpen(true);
+              }}
+            />
+          )}
+
           <button className="btn btn-block jb-apply-btn" disabled={busy || checking || closed} onClick={onApply}>
             {closed ? 'No longer accepting applications' : busy ? 'Applying...' : checking ? 'Checking…' : job.link ? (
               <>
@@ -670,6 +684,19 @@ function ApplyPanel({ job, row, onApplied, refreshing }: { job: ReturnType<typeo
           </button>
           {job.link && <div className="tiny muted center" style={{ marginTop: 6 }}>You’ll finish applying on the employer’s website.</div>}
         </div>
+      )}
+
+      {aiApplyOpen && job.numericId != null && (
+        <AiApplyModal
+          open
+          serviceRequestId={job.numericId}
+          onClose={() => setAiApplyOpen(false)}
+          onSubmitted={() => {
+            setLocalApplied(true);
+            onApplied();
+          }}
+          onNeedsPlan={() => setGate(CAREER_GATE)}
+        />
       )}
 
       {/* Screening questions */}
