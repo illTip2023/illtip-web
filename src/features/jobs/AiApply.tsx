@@ -325,7 +325,15 @@ export function AiApplyModal({
         <div className="aia-fit warn">
           <div className="aia-fit-title">Almost done: finish on the employer's site</div>
           <div className="small">
-            {reason === 'captcha' ? "The employer's site asks you to prove you're human, so you'll press Submit yourself." : reason === 'login_required' || reason === 'site_requires_you' ? 'This site needs you to sign in yourself.' : 'Everything is prepared below. It takes about a minute.'}
+            {reason === 'captcha'
+              ? "The employer's site asks you to prove you're human, so you'll press Submit yourself."
+              : reason === 'login_required' || reason === 'site_requires_you'
+                ? 'This site needs you to sign in yourself.'
+                : reason === 'unconfirmed'
+                  ? "I submitted the form but couldn't confirm it went through. Check your email for a confirmation from the employer before applying again."
+                  : reason === 'email_verification'
+                    ? 'The employer sent a security code to your email. Open the page below to finish.'
+                    : 'Everything is prepared below. It takes about a minute.'}
           </div>
         </div>
         {draft.handover && (
@@ -419,7 +427,7 @@ export function AiApplyModal({
             <div>
               <div className="field">
                 <label className="label">To</label>
-                <div className="small">{draft.email.to}</div>
+                <div className="small">{draft.email.to || "The employer (their address is shown once you've applied)"}</div>
               </div>
               <div className="field">
                 <label className="label" htmlFor="aia-subj">Subject</label>
@@ -437,7 +445,15 @@ export function AiApplyModal({
               <textarea id="aia-cl" className="textarea" style={{ minHeight: 260 }} value={edits.coverLetter ?? draft.coverLetter} onChange={(e) => setEdits((s) => ({ ...s, coverLetter: e.target.value }))} />
             </div>
           ))}
-        {draft.status === 'failed' && <div className="aia-err">{draft.result?.reason === 'MONTHLY_LIMIT_REACHED' ? "You've reached this month's application limit on your plan." : "That didn't go through. Please try again."}</div>}
+        {draft.status === 'failed' && (
+          <div className="aia-err">
+            {draft.result?.reason === 'MONTHLY_LIMIT_REACHED'
+              ? "You've reached this month's application limit on your plan."
+              : draft.result?.reason === 'EMAIL_REQUIRED'
+                ? 'Add your email in your application details so employers can reply to you.'
+                : "That didn't go through. Please try again."}
+          </div>
+        )}
         {error && <div className="aia-err">{error}</div>}
         <div className="aia-actions">
           {confirm ? (
